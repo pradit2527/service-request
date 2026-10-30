@@ -1,0 +1,98 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: var(--font-plex-thai), var(--font-noto-lao), "Leelawadee UI", "Lao UI", Tahoma, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, "Cascadia Code", Consolas, monospace;
+}
+
+@theme {
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.04), 0 1px 3px rgb(15 23 42 / 0.05);
+  --shadow-lift: 0 4px 6px -2px rgb(15 23 42 / 0.05), 0 14px 28px -8px rgb(15 23 42 / 0.14);
+  --animate-fade-up: fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-fade-in: fade-in 0.2s ease-out both;
+  --animate-slide-in: slide-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes slide-in {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: none;
+    }
+  }
+}
+
+/* Subtle engineering-paper grid used on dark hero panels */
+@utility bg-grid {
+  background-image:
+    linear-gradient(to right, rgb(255 255 255 / 0.055) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(255 255 255 / 0.055) 1px, transparent 1px);
+  background-size: 36px 36px;
+}
+
+/* Light that runs around the logo frame: a comet-shaped conic gradient rotating behind the logo.
+   The element is a square larger than the frame, so its corners never show while it spins. */
+@keyframes logo-runner-spin {
+  from {
+    rotate: 0deg;
+  }
+  to {
+    rotate: 360deg;
+  }
+}
+
+@utility logo-runner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 220%;
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  background-image: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    transparent 190deg,
+    rgb(245 197 66 / 0.25) 225deg,
+    #f5c542 290deg,
+    #fff6c9 328deg,
+    #7dd3fc 346deg,
+    transparent 360deg
+  );
+  @media (prefers-reduced-motion: no-preference) {
+    animation: logo-runner-spin 3.6s linear infinite;
+  }
+}
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    font-family: var(--font-sans);
+  }
+  ::selection {
+    background: rgb(99 102 241 / 0.22);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-indigo-500);
+    outline-offset: 2px;
+  }
+}
