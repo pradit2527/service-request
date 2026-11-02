@@ -34,6 +34,7 @@ export function DataTable<T>({
   actions,
   actionsHeader,
   emptyText,
+  footer,
 }: {
   columns: Column<T>[];
   rows: T[];
@@ -43,6 +44,8 @@ export function DataTable<T>({
   actions?: (row: T) => React.ReactNode;
   actionsHeader?: string;
   emptyText: string;
+  /** A last row (for example the totals) shown under the others, in the table and as a card. */
+  footer?: T;
 }) {
   if (rows.length === 0) return <EmptyState text={emptyText} />;
 
@@ -106,12 +109,24 @@ export function DataTable<T>({
               </tr>
             ))}
           </tbody>
+          {footer !== undefined && (
+            <tfoot>
+              <tr className="border-t-2 border-slate-200 bg-slate-100/70 font-semibold text-slate-900">
+                {columns.map((column) => (
+                  <td key={column.key} className={`px-3 py-3 ${column.align === "right" ? "text-right" : ""} ${column.showFrom ? SHOW_FROM[column.showFrom] : ""}`}>
+                    {column.render(footer)}
+                  </td>
+                ))}
+                {actions && <td />}
+              </tr>
+            </tfoot>
+          )}
         </table>
       </div>
 
       <ul className="space-y-3 lg:hidden">
-        {rows.map((row) => (
-          <li key={rowKey(row)} className={`${cardClass} space-y-3 p-4`}>
+        {[...rows, ...(footer !== undefined ? [footer] : [])].map((row, index) => (
+          <li key={index < rows.length ? rowKey(row) : "footer"} className={`${cardClass} space-y-3 p-4 ${index >= rows.length ? "bg-slate-50" : ""}`}>
             {titles.map((column) => (
               <div key={column.key} className="min-w-0">
                 {column.render(row)}
@@ -127,7 +142,7 @@ export function DataTable<T>({
                 ))}
               </dl>
             )}
-            {actions && <div className="flex flex-wrap items-start gap-2 border-t border-slate-100 pt-3">{actions(row)}</div>}
+            {actions && index < rows.length && <div className="flex flex-wrap items-start gap-2 border-t border-slate-100 pt-3">{actions(row)}</div>}
           </li>
         ))}
       </ul>

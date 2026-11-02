@@ -13,6 +13,7 @@ export async function ReportToolbar({
   total,
   q,
   searchPlaceholder,
+  submitLabel,
   preserve,
   hasFilters,
   clearHref,
@@ -20,8 +21,11 @@ export async function ReportToolbar({
   children,
 }: {
   total: number;
-  q: string;
-  searchPlaceholder: string;
+  q?: string;
+  /** Leave out for a report that has no search box. */
+  searchPlaceholder?: string;
+  /** The text of the submit button; "Search" when left out. */
+  submitLabel?: string;
   preserve?: Record<string, string | undefined>;
   hasFilters: boolean;
   clearHref: string;
@@ -40,17 +44,19 @@ export async function ReportToolbar({
 
       <form method="get" className={`${cardClass} space-y-3 p-4`}>
         {Object.entries(preserve ?? {}).map(([name, value]) => (value ? <input key={name} type="hidden" name={name} value={value} /> : null))}
-        <div className="relative">
-          <label htmlFor="report-q" className="sr-only">
-            {t("ค้นหา", "ຄົ້ນຫາ", "Search")}
-          </label>
-          <Search className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden />
-          <input id="report-q" name="q" type="search" defaultValue={q} placeholder={searchPlaceholder} className={`${inputClass} pl-10`} />
-        </div>
+        {searchPlaceholder !== undefined && (
+          <div className="relative">
+            <label htmlFor="report-q" className="sr-only">
+              {t("ค้นหา", "ຄົ້ນຫາ", "Search")}
+            </label>
+            <Search className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden />
+            <input id="report-q" name="q" type="search" defaultValue={q} placeholder={searchPlaceholder} className={`${inputClass} pl-10`} />
+          </div>
+        )}
         {children && <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{children}</div>}
         <div className="flex flex-wrap gap-2">
           <button type="submit" className={btnPrimary}>
-            {t("ค้นหา", "ຄົ້ນຫາ", "Search")}
+            {submitLabel ?? t("ค้นหา", "ຄົ້ນຫາ", "Search")}
           </button>
           {hasFilters && (
             <Link href={clearHref} className={btnSecondary}>

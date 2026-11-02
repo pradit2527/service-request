@@ -11,8 +11,8 @@ import { paginate } from "./pagination";
 import type { Viewer } from "./permissions";
 import { PAGE_SIZE } from "./queries";
 import { parseRequestReportParams, requestReportScope, type RequestReportParams, type UserReportParams } from "./report-params";
-import { approvalOutcome, type ApprovalOutcome } from "./report-summary";
-import { buildRequestReportWhere, buildUserReportWhere } from "./report-where";
+import { approvalOutcome, type ApprovalOutcome, type SummarySubject } from "./report-summary";
+import { buildRequestReportWhere, buildSummaryWhere, buildUserReportWhere } from "./report-where";
 
 const requestReportSelect = {
   id: true,
@@ -169,4 +169,40 @@ export async function getUserReportRecord(id: string): Promise<UserFormInitial |
     select: { id: true, email: true, name: true, role: true, department: true, phone: true, isActive: true },
   });
   return user ? { ...user, department: user.department ?? "", phone: user.phone ?? "" } : null;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Summary
+// ---------------------------------------------------------------------------------------------
+
+/** The summary reads at most this many requests; beyond that the page says it is incomplete. */
+export const SUMMARY_ROW_CAP = 20_000;
+
+/** The requests filed in a range of days that the viewer's summary counts, or null when the viewer has no report. */
+export async function listSummarySubjects(viewer: Viewer, range: { from: string; to: string }): Promise<{ rows: SummarySubject[]; capped: boolean } | null> {
+  const scope = requestReportScope(viewer);
+  if (!scope) return null;
+
+  const records = await db.serviceRequest.findMany({
+    where: buildSummaryWhere(scope, range),
+    select: {
+      slaTier: true,
+      status: true,
+      createdAt: true,
+      firstResponseAt: true,
+      responseDueAt: true,
+      fulfillmentDueAt: true,
+      closedAt: true,
+      slaPausedAt: true,
+      type: true,
+      managerApprovedAt: true,
+      assignee: { select: { name: true } },
+    },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    take: SUMMARY_ROW_CAP + 1,
+  });
+
+  const capped = records.length > SUMMARY_ROW_CAP;
+  const rows = records.slice(0, SUMMARY_ROW_CAP).map(({ assignee, ...row }) => ({ ...row, assigneeName: assignee?.name ?? null }));
+  return { rows, capped };
 }
