@@ -5,7 +5,7 @@
 
 import { isPriority, isRole, type Priority, type Role } from "./labels";
 import type { Viewer } from "./permissions";
-import { isRequestType, type RequestType } from "./request-types";
+import { REQUEST_CATEGORIES, isRequestType, type RequestType } from "./request-types";
 import { CURRENT_STATUSES, type RequestStatus } from "./status";
 
 export type SortDir = "asc" | "desc";
@@ -91,10 +91,15 @@ export function buildReportHref(path: string, params: Record<string, string | nu
 
 export const REQUEST_REPORT_SORTS = ["requestNo", "title", "status", "priority", "createdAt", "neededBy", "fulfillmentDueAt"] as const;
 
+/** The type filter is one box: a single type, or a whole category by its heading, written as "category:<key>". */
+export const CATEGORY_PREFIX = "category:";
+
 export type RequestReportParams = {
   q: string;
   status?: RequestStatus | "OPEN";
   type?: RequestType;
+  /** Key of a category in REQUEST_CATEGORIES: every type listed under that heading. */
+  category?: string;
   priority?: Priority;
   from?: string;
   to?: string;
@@ -120,6 +125,7 @@ export function parseRequestReportParams(query: Raw, viewer: Viewer): RequestRep
     q: searchOf(raw.q),
     status: raw.status === "OPEN" ? "OPEN" : oneOf(raw.status, CURRENT_STATUSES),
     type: isRequestType(raw.type) ? raw.type : undefined,
+    category: REQUEST_CATEGORIES.find((category) => raw.type === `${CATEGORY_PREFIX}${category.key}`)?.key,
     priority: isPriority(raw.priority) ? raw.priority : undefined,
     from,
     to,
@@ -139,13 +145,18 @@ export function parseRequestReportParams(query: Raw, viewer: Viewer): RequestRep
 /** The parameters a link keeps; the sort is named because the search form carries it through a new search. */
 export type ReportQuery = { sort?: string; dir?: string; [key: string]: string | number | undefined };
 
+/** What the type filter shows as chosen, and what the address carries: a type, or "category:<key>". */
+export function typeFilterValue(params: Pick<RequestReportParams, "type" | "category">): string | undefined {
+  return params.category ? `${CATEGORY_PREFIX}${params.category}` : params.type;
+}
+
 /** The request report as it stands, for the links on the page: they keep the search, filters, sort and page and change only what they must. */
 export function requestReportQuery(params: RequestReportParams): ReportQuery {
   const sorted = params.sort === "createdAt" && params.dir === "desc" ? {} : { sort: params.sort, dir: params.dir };
   return {
     q: params.q,
     status: params.status,
-    type: params.type,
+    type: typeFilterValue(params),
     priority: params.priority,
     from: params.from,
     to: params.to,

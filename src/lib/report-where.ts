@@ -5,6 +5,7 @@
 
 import type { Prisma } from "@prisma/client";
 import { dayRangeBangkok, type RequestReportParams, type RequestScope, type UserReportParams } from "./report-params";
+import { REQUEST_CATEGORIES } from "./request-types";
 import { OPEN_STATUSES, breachedWhere } from "./request-where";
 
 export function buildRequestReportWhere(params: RequestReportParams, scope: RequestScope, now: Date = new Date()): Prisma.ServiceRequestWhereInput {
@@ -18,6 +19,8 @@ export function buildRequestReportWhere(params: RequestReportParams, scope: Requ
   if (params.status === "OPEN") and.push({ status: { in: OPEN_STATUSES } });
   else if (params.status) and.push({ status: params.status });
   if (params.type) and.push({ type: params.type });
+  const category = REQUEST_CATEGORIES.find((item) => item.key === params.category);
+  if (category) and.push({ type: { in: [...category.types] } });
   if (params.priority) and.push({ priority: params.priority });
 
   const created = dayRangeBangkok(params.from, params.to);

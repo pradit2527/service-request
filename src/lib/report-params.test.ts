@@ -10,6 +10,7 @@ import {
   requestReportQuery,
   requestReportScope,
   summaryPresets,
+  typeFilterValue,
   userReportQuery,
 } from "./report-params";
 
@@ -103,6 +104,34 @@ describe("parseRequestReportParams", () => {
       edit: "cmabc-123_X",
       slaBreached: true,
     });
+  });
+});
+
+describe("the type filter", () => {
+  it("takes a single type", () => {
+    expect(parseRequestReportParams({ type: "CLOUD_RESOURCE" }, admin)).toMatchObject({ type: "CLOUD_RESOURCE" });
+  });
+
+  it("takes a whole category by its heading", () => {
+    const parsed = parseRequestReportParams({ type: "category:cloud" }, admin);
+    expect(parsed.category).toBe("cloud");
+    expect(parsed.type).toBeUndefined();
+  });
+
+  it("drops a category that does not exist, and a type written like one", () => {
+    const parsed = parseRequestReportParams({ type: "category:nope" }, admin);
+    expect(parsed.category).toBeUndefined();
+    expect(parsed.type).toBeUndefined();
+    expect(parseRequestReportParams({ type: "category:FIREWALL" }, admin).category).toBeUndefined();
+  });
+
+  it("writes the choice back the way the form sends it", () => {
+    expect(typeFilterValue(parseRequestReportParams({ type: "category:ai" }, admin))).toBe("category:ai");
+    expect(typeFilterValue(parseRequestReportParams({ type: "FIREWALL" }, admin))).toBe("FIREWALL");
+    expect(typeFilterValue(parseRequestReportParams({}, admin))).toBeUndefined();
+    expect(buildReportHref("/reports/requests", requestReportQuery(parseRequestReportParams({ type: "category:ai" }, admin)))).toBe(
+      "/reports/requests?type=category%3Aai",
+    );
   });
 });
 

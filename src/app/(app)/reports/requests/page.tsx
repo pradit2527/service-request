@@ -18,7 +18,7 @@ import { getI18n } from "@/lib/i18n-server";
 import { PRIORITIES, PRIORITY_LABEL, formatDate } from "@/lib/labels";
 import { isAdmin } from "@/lib/permissions";
 import { listApprovers, listAssignableStaff } from "@/lib/queries";
-import { buildReportHref, parseRequestReportParams, requestReportQuery } from "@/lib/report-params";
+import { CATEGORY_PREFIX, buildReportHref, parseRequestReportParams, requestReportQuery, typeFilterValue } from "@/lib/report-params";
 import { getRequestReportRecord, listRequestReport, type RequestReportRow } from "@/lib/report-queries";
 import { REQUEST_CATEGORIES, REQUEST_TYPE_DEFS } from "@/lib/request-types";
 import { CURRENT_STATUSES, STATUS_LABEL } from "@/lib/status";
@@ -46,10 +46,10 @@ export default async function RequestReportPage({ searchParams }: { searchParams
   const editApprovers = editing && editing.status === "PENDING_APPROVAL" ? await listApprovers(editing.requesterId) : [];
 
   const hasFilters = Boolean(
-    params.q || params.status || params.type || params.priority || params.from || params.to || params.slaBreached || params.assignee || params.approver || params.result || params.deleted,
+    params.q || params.status || params.type || params.category || params.priority || params.from || params.to || params.slaBreached || params.assignee || params.approver || params.result || params.deleted,
   );
 
-  const filterCount = [params.status, params.type, params.priority, params.from, params.to, params.slaBreached, params.assignee, params.approver, params.result, params.deleted].filter(Boolean).length;
+  const filterCount = [params.status, params.type || params.category, params.priority, params.from, params.to, params.slaBreached, params.assignee, params.approver, params.result, params.deleted].filter(Boolean).length;
 
   // Every link keeps the search, the filters and the sort, and changes only what it must.
   const current = requestReportQuery(params);
@@ -171,10 +171,14 @@ export default async function RequestReportPage({ searchParams }: { searchParams
           <label htmlFor="f-type" className={labelClass}>
             {t("ประเภท", "ປະເພດ", "Type")}
           </label>
-          <select id="f-type" name="type" defaultValue={params.type ?? ""} className={inputClass}>
+          <select id="f-type" name="type" defaultValue={typeFilterValue(params) ?? ""} className={inputClass}>
             <option value="">{t("ทุกประเภท", "ທຸກປະເພດ", "All types")}</option>
             {REQUEST_CATEGORIES.map((category) => (
               <optgroup key={category.key} label={t(category.label)}>
+                {/* A heading cannot be picked in a select, so the first entry of each group stands for the whole heading. */}
+                <option value={`${CATEGORY_PREFIX}${category.key}`}>
+                  {t("ทุกรายการในหมวดนี้", "ທຸກລາຍການໃນໝວດນີ້", "Everything in this category")}
+                </option>
                 {category.types.map((type) => (
                   <option key={type} value={type}>
                     {t(REQUEST_TYPE_DEFS[type].label)}

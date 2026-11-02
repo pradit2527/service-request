@@ -4,6 +4,7 @@ import type { Viewer } from "./permissions";
 import { dayRangeBangkok, parseRequestReportParams, parseUserReportParams, type RequestReportParams, type RequestScope } from "./report-params";
 import { buildRequestReportWhere, buildSummaryWhere, buildUserReportWhere } from "./report-where";
 import { OPEN_STATUSES, breachedWhere } from "./request-where";
+import { REQUEST_CATEGORIES } from "./request-types";
 
 const admin: Viewer = { id: "u-admin", role: "ADMIN" };
 const all: RequestScope = { kind: "all" };
@@ -45,6 +46,13 @@ describe("buildRequestReportWhere", () => {
     expect(clauses(buildRequestReportWhere(params({ priority: "HIGH" }), all))).toContainEqual({ priority: "HIGH" });
     expect(clauses(buildRequestReportWhere(params({ assignee: "unassigned" }), all))).toContainEqual({ assigneeId: null });
     expect(clauses(buildRequestReportWhere(params({ assignee: "s1" }), all))).toContainEqual({ assigneeId: "s1" });
+  });
+
+  it("filters by every type in a chosen category", () => {
+    const cloud = REQUEST_CATEGORIES.find((category) => category.key === "cloud")!;
+    const list = clauses(buildRequestReportWhere(params({ type: "category:cloud" }), all));
+    expect(list).toContainEqual({ type: { in: [...cloud.types] } });
+    expect(list.some((clause) => "type" in clause && typeof (clause as { type: unknown }).type === "string")).toBe(false);
   });
 
   it("filters by the day the request was filed, in Bangkok time", () => {
