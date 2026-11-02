@@ -9,7 +9,7 @@ import { requireUser } from "@/lib/dal";
 import { getI18n, getT } from "@/lib/i18n-server";
 import { canManageSystem } from "@/lib/permissions";
 import { listApprovers, listRequesterOptions } from "@/lib/queries";
-import { AUDIENCE_LABEL, REQUEST_CATEGORIES, REQUEST_TYPE_DEFS, isRequestType } from "@/lib/request-types";
+import { REQUEST_CATEGORIES, REQUEST_TYPE_DEFS, isRequestType } from "@/lib/request-types";
 import { todayBangkok } from "@/lib/request-number";
 import { SLA_TIER_DEF, classifyTier, formatBusinessDuration } from "@/lib/sla";
 import { slaHolidayList } from "@/lib/sla-calendar";
@@ -73,17 +73,15 @@ function Banner({
   );
 }
 
-export default async function NewRequestPage({ searchParams }: { searchParams: Promise<{ type?: string; audience?: string }> }) {
+export default async function NewRequestPage({ searchParams }: { searchParams: Promise<{ type?: string }> }) {
   const { t, lang } = await getI18n();
   const user = await requireUser();
-  const { type, audience } = await searchParams;
+  const { type } = await searchParams;
 
   if (!isRequestType(type)) {
     const groups: CatalogGroup[] = REQUEST_CATEGORIES.map((category) => ({
       key: category.key,
       label: t(category.label),
-      description: t(category.description),
-      audience: category.audience,
       items: category.types.map((requestType) => ({
         type: requestType,
         label: t(REQUEST_TYPE_DEFS[requestType].label),
@@ -91,7 +89,6 @@ export default async function NewRequestPage({ searchParams }: { searchParams: P
         fulfillment: formatBusinessDuration(SLA_TIER_DEF[classifyTier(requestType, {})].fulfillmentMinutes, lang),
       })),
     }));
-    const initialAudience = audience === "client" || audience === "internal" ? audience : "all";
 
     return (
       <div className="space-y-3.5">
@@ -138,11 +135,7 @@ export default async function NewRequestPage({ searchParams }: { searchParams: P
           </div>
         </div>
 
-        <RequestCatalog
-          groups={groups}
-          audienceLabels={{ client: t(AUDIENCE_LABEL.client), internal: t(AUDIENCE_LABEL.internal) }}
-          initialAudience={initialAudience}
-        />
+        <RequestCatalog groups={groups} />
       </div>
     );
   }
