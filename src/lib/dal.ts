@@ -8,7 +8,7 @@ import { redirect } from "next/navigation";
 import { db } from "./db";
 import { SESSION_COOKIE, verifySessionToken } from "./jwt";
 import type { Role } from "./labels";
-import { canEditKb, canManageSystem, isAdmin, isStaff } from "./permissions";
+import { canEditKb, canManageSystem, isStaff } from "./permissions";
 
 export type CurrentUser = {
   id: string;
@@ -40,12 +40,6 @@ export async function requireUser(): Promise<CurrentUser> {
 export async function requireStaff(): Promise<CurrentUser> {
   const user = await requireUser();
   if (!isStaff(user)) redirect("/");
-  return user;
-}
-
-export async function requireAdmin(): Promise<CurrentUser> {
-  const user = await requireUser();
-  if (!isAdmin(user)) redirect("/");
   return user;
 }
 

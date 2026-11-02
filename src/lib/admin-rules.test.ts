@@ -19,6 +19,7 @@ const none: UserReferenceCounts = {
   approvals: 0,
   decided: 0,
   deleted: 0,
+  audits: 0,
 };
 
 describe("userDeletionBlockers", () => {
@@ -28,6 +29,10 @@ describe("userDeletionBlockers", () => {
 
   it("lists every kind of history, in a fixed order", () => {
     expect(userDeletionBlockers({ ...none, assigned: 2, comments: 1 })).toEqual(["comments", "assigned"]);
+  });
+
+  it("counts a user who appears in the change log, because the log keeps pointing at who made each change", () => {
+    expect(userDeletionBlockers({ ...none, audits: 3 })).toEqual(["audits"]);
   });
 
   it("counts a user who is only an assignee, approver or decider, because those links would be cleared", () => {

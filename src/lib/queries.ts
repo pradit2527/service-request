@@ -5,6 +5,8 @@ import "server-only";
 import type { Prisma } from "@prisma/client";
 import { db } from "./db";
 import { isKbCategory } from "./kb";
+import type { Role } from "./labels";
+import { paginate } from "./pagination";
 import { canManageSystem, canViewRequest, isStaff, type Viewer } from "./permissions";
 import type { RequestType } from "./request-types";
 import { evaluateSla, startOfMonthBangkok, tally, type PassRate, type SlaSubject } from "./sla";
@@ -307,4 +309,32 @@ export async function getArticle(viewer: Viewer, id: string) {
   });
   if (!article || (!article.isPublished && !isStaff(viewer))) return null;
   return article;
+}
+
+// ---------------------------------------------------------------------------------------------
+// System management
+// ---------------------------------------------------------------------------------------------
+
+export type UserListFilters = { q?: string; role?: Role; status?: "active" | "inactive"; page?: number };
+
+export async function listUsersForAdmin(filters: UserListFilters) {
+  const where: Prisma.UserWhereInput = {};
+  const q = filters.q?.trim();
+  if (q) {
+    const contains = { contains: q, mode: "insensitive" as const };
+    where.OR = [{ name: contains }, { email: contains }];
+  }
+  if (filters.role) where.role = filters.role;
+  if (filters.status) where.isActive = filters.status === "active";
+
+  const total = await db.user.count({ where });
+  const { page, pageCount, skip } = paginate(total, filters.page ?? 1, PAGE_SIZE);
+  const items = await db.user.findMany({
+    where,
+    select: { id: true, name: true, email: true, department: true, role: true, isActive: true, lastLoginAt: true },
+    orderBy: [{ role: "desc" }, { name: "asc" }],
+    skip,
+    take: PAGE_SIZE,
+  });
+  return { items, total, page, pageCount };
 }

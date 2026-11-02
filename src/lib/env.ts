@@ -46,3 +46,12 @@ export function isAllowedEmail(email: string): boolean {
   const domain = email.toLowerCase().split("@")[1];
   return !!domain && allowedEmailDomains().includes(domain);
 }
+
+/**
+ * Whether an administrator may register `email` ahead of the person's first sign-in. It follows the sign-in
+ * rule (company domains only); without a domain list it is open only while developing with dev login.
+ */
+export function registrationEmailAllowed(email: string): boolean {
+  if (allowedEmailDomains().length === 0) return devLoginEnabled();
+  return isAllowedEmail(email);
+}

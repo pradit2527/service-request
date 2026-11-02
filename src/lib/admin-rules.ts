@@ -13,6 +13,8 @@ export type UserReferenceCounts = {
   approvals: number;
   decided: number;
   deleted: number;
+  // The change log keeps pointing at whoever made each change.
+  audits: number;
 };
 
 const REFERENCE_ORDER: (keyof UserReferenceCounts)[] = [
@@ -24,6 +26,7 @@ const REFERENCE_ORDER: (keyof UserReferenceCounts)[] = [
   "approvals",
   "decided",
   "deleted",
+  "audits",
 ];
 
 export const USER_REFERENCE_LABEL: Record<keyof UserReferenceCounts, Localized> = {
@@ -35,6 +38,7 @@ export const USER_REFERENCE_LABEL: Record<keyof UserReferenceCounts, Localized> 
   approvals: l("คำขอที่เป็นผู้อนุมัติ", "ຄຳຂໍທີ່ເປັນຜູ້ອະນຸມັດ", "requests they approve"),
   decided: l("คำขอที่เคยพิจารณา", "ຄຳຂໍທີ່ເຄີຍພິຈາລະນາ", "requests they decided"),
   deleted: l("คำขอที่เคยลบ", "ຄຳຂໍທີ່ເຄີຍລຶບ", "requests they deleted"),
+  audits: l("รายการในบันทึกการเปลี่ยนแปลง", "ລາຍການໃນບັນທຶກການປ່ຽນແປງ", "entries in the change log"),
 };
 
 /** The kinds of history that stop a user being deleted, in a fixed order. Empty means the user can be deleted. */
