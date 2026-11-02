@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
+  BarChart3,
   ClipboardCheck,
   LayoutDashboard,
   ListChecks,
@@ -26,7 +27,7 @@ import { Logo } from "./logo";
 export type NavItem = {
   href: string;
   label: string;
-  icon: "dashboard" | "requests" | "tasks" | "approvals" | "settings";
+  icon: "dashboard" | "requests" | "tasks" | "approvals" | "settings" | "reports";
   badge?: number;
 };
 
@@ -36,6 +37,7 @@ const ICONS: Record<NavItem["icon"], LucideIcon> = {
   tasks: ClipboardCheck,
   approvals: ShieldCheck,
   settings: Settings,
+  reports: BarChart3,
 };
 
 type ShellUser = { name: string; email: string; roleLabel: string };
@@ -59,8 +61,10 @@ function SidebarContent({
   onNavigate?: () => void;
 }) {
   const t = useT();
-  const main = items.filter((i) => i.icon !== "settings");
-  const admin = items.filter((i) => i.icon === "settings");
+  // The management group: system management and the reports.
+  const management = (item: NavItem) => item.icon === "settings" || item.icon === "reports";
+  const main = items.filter((i) => !management(i));
+  const admin = items.filter(management);
   const creating = pathname === "/requests/new";
 
   return (

@@ -25,7 +25,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (isManager(user)) {
     items.push({ href: "/approvals", label: t("รออนุมัติ", "ລໍຖ້າອະນຸມັດ", "Approvals"), icon: "approvals", badge: pendingApprovals });
   }
-  if (canManageSystem(user)) items.push({ href: "/admin", label: t("จัดการระบบ", "ຈັດການລະບົບ", "System management"), icon: "settings" });
+  if (canManageSystem(user)) {
+    items.push({ href: "/admin", label: t("จัดการระบบ", "ຈັດການລະບົບ", "System management"), icon: "settings" });
+    items.push({ href: "/reports", label: t("รายงาน", "ລາຍງານ", "Reports"), icon: "reports" });
+  }
 
   return (
     <AppShell user={{ name: user.name, email: user.email, roleLabel: t(ROLE_LABEL[user.role]) }} items={items}>
