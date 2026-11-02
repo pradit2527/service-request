@@ -97,7 +97,9 @@ export function summarizeRequests(
   const groups = new Map<string, SummarySubject[]>();
   for (const row of rows) {
     const key = keyOf(row, group);
-    groups.set(key, [...(groups.get(key) ?? []), row]);
+    const members = groups.get(key);
+    if (members) members.push(row);
+    else groups.set(key, [row]);
   }
   const summaries = [...groups.entries()]
     .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))

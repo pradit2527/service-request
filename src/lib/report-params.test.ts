@@ -7,8 +7,10 @@ import {
   parseRequestReportParams,
   parseSummaryParams,
   parseUserReportParams,
+  requestReportQuery,
   requestReportScope,
   summaryPresets,
+  userReportQuery,
 } from "./report-params";
 
 const admin: Viewer = { id: "u-admin", role: "ADMIN" };
@@ -101,6 +103,46 @@ describe("parseRequestReportParams", () => {
       edit: "cmabc-123_X",
       slaBreached: true,
     });
+  });
+});
+
+// Next.js hands a key that is repeated in the address (?q=a&q=b) to the page as an array.
+describe("a repeated parameter", () => {
+  it("is read by its first value in the request report instead of failing", () => {
+    const parsed = parseRequestReportParams({ q: ["  a ", "b"], status: ["COMPLETED", "OPEN"], sort: ["title", "status"], page: ["2", "3"] }, admin);
+    expect(parsed).toMatchObject({ q: "a", status: "COMPLETED", sort: "title", page: 2 });
+  });
+
+  it("is read by its first value in the user and summary reports", () => {
+    expect(parseUserReportParams({ q: ["x", "y"], role: ["MANAGER", "ADMIN"], new: ["1", "0"] })).toMatchObject({ q: "x", role: "MANAGER", adding: true });
+    expect(parseSummaryParams({ group: ["month", "type"], from: ["2026-01-01", "2026-02-01"] }, new Date("2026-11-15T05:00:00Z"))).toMatchObject({
+      group: "month",
+      from: "2026-01-01",
+    });
+  });
+
+  it("is dropped when it is an empty list", () => {
+    expect(parseRequestReportParams({ q: [], sort: [] }, admin)).toEqual({ q: "", slaBreached: false, sort: "createdAt", dir: "desc", page: 1 });
+  });
+});
+
+// The links on the page (Edit, Add, the pop-up's way back) are built from these, so they must not lose the page.
+describe("requestReportQuery and userReportQuery", () => {
+  it("keep the page, the filters and a changed sort, and leave out the defaults", () => {
+    const params = parseRequestReportParams({ q: "vpn", status: "OPEN", page: "3", sort: "title", dir: "desc" }, admin);
+    expect(buildReportHref("/reports/requests", requestReportQuery(params))).toBe("/reports/requests?q=vpn&status=OPEN&sort=title&dir=desc&page=3");
+    expect(buildReportHref("/reports/requests", requestReportQuery(parseRequestReportParams({}, admin)))).toBe("/reports/requests");
+  });
+
+  it("keep the page of the user report", () => {
+    const params = parseUserReportParams({ role: "MANAGER", page: "2" });
+    expect(buildReportHref("/reports/users", userReportQuery(params))).toBe("/reports/users?role=MANAGER&page=2");
+    expect(buildReportHref("/reports/users", userReportQuery(parseUserReportParams({})))).toBe("/reports/users");
+  });
+
+  it("do not carry the pop-up itself", () => {
+    expect(buildReportHref("/reports/requests", requestReportQuery(parseRequestReportParams({ edit: "abc123" }, admin)))).toBe("/reports/requests");
+    expect(buildReportHref("/reports/users", userReportQuery(parseUserReportParams({ new: "1", edit: "abc123" })))).toBe("/reports/users");
   });
 });
 

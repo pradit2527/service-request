@@ -18,7 +18,7 @@ import { getI18n } from "@/lib/i18n-server";
 import { PRIORITIES, PRIORITY_LABEL, formatDate } from "@/lib/labels";
 import { isAdmin } from "@/lib/permissions";
 import { listApprovers, listAssignableStaff } from "@/lib/queries";
-import { buildReportHref, parseRequestReportParams } from "@/lib/report-params";
+import { buildReportHref, parseRequestReportParams, requestReportQuery } from "@/lib/report-params";
 import { getRequestReportRecord, listRequestReport, type RequestReportRow } from "@/lib/report-queries";
 import { REQUEST_CATEGORIES, REQUEST_TYPE_DEFS } from "@/lib/request-types";
 import { CURRENT_STATUSES, STATUS_LABEL } from "@/lib/status";
@@ -31,7 +31,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 const PATH = "/reports/requests";
 
-export default async function RequestReportPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
+export default async function RequestReportPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const user = await requireSystemManager();
   const { t, lang } = await getI18n();
   const params = parseRequestReportParams(await searchParams, user);
@@ -52,21 +52,7 @@ export default async function RequestReportPage({ searchParams }: { searchParams
   const filterCount = [params.status, params.type, params.priority, params.from, params.to, params.slaBreached, params.assignee, params.approver, params.result, params.deleted].filter(Boolean).length;
 
   // Every link keeps the search, the filters and the sort, and changes only what it must.
-  const sorted = params.sort === "createdAt" && params.dir === "desc" ? {} : { sort: params.sort, dir: params.dir };
-  const current = {
-    q: params.q,
-    status: params.status,
-    type: params.type,
-    priority: params.priority,
-    from: params.from,
-    to: params.to,
-    sla: params.slaBreached ? "breached" : undefined,
-    assignee: params.assignee,
-    approver: params.approver,
-    result: params.result,
-    deleted: params.deleted,
-    ...sorted,
-  };
+  const current = requestReportQuery(params);
   const hrefFor = (overrides: Record<string, string | number | undefined>) => buildReportHref(PATH, { ...current, ...overrides });
   // This same report without the pop-up: where closing, cancelling and saving lead back to.
   const closeHref = hrefFor({});
@@ -156,7 +142,7 @@ export default async function RequestReportPage({ searchParams }: { searchParams
         total={report.total}
         q={params.q}
         searchPlaceholder={t("ค้นหาเลขที่ หัวข้อ หรือชื่อผู้ขอ", "ຄົ້ນຫາເລກທີ່, ຫົວຂໍ້ ຫຼື ຊື່ຜູ້ຂໍ", "Search by number, subject or requester name")}
-        preserve={{ sort: sorted.sort, dir: sorted.dir }}
+        preserve={{ sort: current.sort, dir: current.dir }}
         hasFilters={hasFilters}
         filterCount={filterCount}
         clearHref={PATH}

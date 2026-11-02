@@ -36,6 +36,17 @@ describe("monthKeyBangkok", () => {
   });
 });
 
+describe("summarizeRequests at the 20,000-row cap", () => {
+  it("groups one big group in linear time", () => {
+    const rows = Array.from({ length: 50_000 }, () => subject());
+    const started = performance.now();
+    const { rows: groups, totals } = summarizeRequests(rows, "type", NOW);
+    expect(performance.now() - started).toBeLessThan(1500);
+    expect(groups).toHaveLength(1);
+    expect(totals.total).toBe(50_000);
+  });
+});
+
 describe("approvalOutcome", () => {
   const at = new Date("2026-11-03T05:00:00Z");
 

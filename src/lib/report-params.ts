@@ -9,12 +9,18 @@ import { isRequestType, type RequestType } from "./request-types";
 import { CURRENT_STATUSES, type RequestStatus } from "./status";
 
 export type SortDir = "asc" | "desc";
-type Raw = Record<string, string | undefined>;
+// Next.js hands a key that is repeated in the address (?q=a&q=b) to the page as an array, so a value may be one.
+type Raw = Record<string, string | string[] | undefined>;
 
 // Bangkok has no daylight saving, so a fixed offset is enough.
 const BANGKOK_OFFSET_MS = 7 * 60 * 60 * 1000;
 const MAX_PAGE = 1_000_000;
 const ID = /^[A-Za-z0-9_-]{1,64}$/;
+
+/** Reads a repeated key by its first value, so every parser below only ever sees strings. */
+function firstValues(raw: Raw): Record<string, string | undefined> {
+  return Object.fromEntries(Object.entries(raw).map(([key, value]) => [key, Array.isArray(value) ? value[0] : value]));
+}
 
 function idOf(value: string | undefined): string | undefined {
   return value && ID.test(value) ? value : undefined;
@@ -103,7 +109,8 @@ export type RequestReportParams = {
   edit?: string;
 };
 
-export function parseRequestReportParams(raw: Raw, viewer: Viewer): RequestReportParams {
+export function parseRequestReportParams(query: Raw, viewer: Viewer): RequestReportParams {
+  const raw = firstValues(query);
   const sort = oneOf(raw.sort, REQUEST_REPORT_SORTS) ?? "createdAt";
   let from = dayOf(raw.from);
   let to = dayOf(raw.to);
@@ -126,6 +133,29 @@ export function parseRequestReportParams(raw: Raw, viewer: Viewer): RequestRepor
     dir: dirOf(raw.dir, sort === "createdAt" ? "desc" : "asc"),
     page: pageOf(raw.page),
     edit: idOf(raw.edit),
+  };
+}
+
+/** The parameters a link keeps; the sort is named because the search form carries it through a new search. */
+export type ReportQuery = { sort?: string; dir?: string; [key: string]: string | number | undefined };
+
+/** The request report as it stands, for the links on the page: they keep the search, filters, sort and page and change only what they must. */
+export function requestReportQuery(params: RequestReportParams): ReportQuery {
+  const sorted = params.sort === "createdAt" && params.dir === "desc" ? {} : { sort: params.sort, dir: params.dir };
+  return {
+    q: params.q,
+    status: params.status,
+    type: params.type,
+    priority: params.priority,
+    from: params.from,
+    to: params.to,
+    sla: params.slaBreached ? "breached" : undefined,
+    assignee: params.assignee,
+    approver: params.approver,
+    result: params.result,
+    deleted: params.deleted,
+    ...sorted,
+    page: params.page,
   };
 }
 
@@ -156,7 +186,8 @@ export type UserReportParams = {
   adding: boolean;
 };
 
-export function parseUserReportParams(raw: Raw): UserReportParams {
+export function parseUserReportParams(query: Raw): UserReportParams {
+  const raw = firstValues(query);
   const sort = oneOf(raw.sort, USER_REPORT_SORTS) ?? "name";
   return {
     q: searchOf(raw.q),
@@ -169,6 +200,12 @@ export function parseUserReportParams(raw: Raw): UserReportParams {
     edit: idOf(raw.edit),
     adding: raw.new === "1",
   };
+}
+
+/** The user report as it stands, for the links on the page (see `requestReportQuery`). */
+export function userReportQuery(params: UserReportParams): ReportQuery {
+  const sorted = params.sort === "name" && params.dir === "asc" ? {} : { sort: params.sort, dir: params.dir };
+  return { q: params.q, role: params.role, status: params.status, login: params.login, ...sorted, page: params.page };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -194,7 +231,8 @@ export type SummarySort = (typeof SUMMARY_SORTS)[number];
 
 export type SummaryParams = { from: string; to: string; group: SummaryGroup; sort: SummarySort; dir: SortDir };
 
-export function parseSummaryParams(raw: Raw, now: Date): SummaryParams {
+export function parseSummaryParams(query: Raw, now: Date): SummaryParams {
+  const raw = firstValues(query);
   const today = bangkokDateString(now);
   let from = dayOf(raw.from) ?? `${today.slice(0, 7)}-01`;
   let to = dayOf(raw.to) ?? today;

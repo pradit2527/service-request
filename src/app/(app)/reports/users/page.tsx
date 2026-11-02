@@ -16,7 +16,7 @@ import { adminEmails } from "@/lib/env";
 import { getI18n } from "@/lib/i18n-server";
 import { ROLES, ROLE_LABEL, formatDateTime, formatNumber, type Role } from "@/lib/labels";
 import { isAdmin } from "@/lib/permissions";
-import { buildReportHref, parseUserReportParams } from "@/lib/report-params";
+import { buildReportHref, parseUserReportParams, userReportQuery } from "@/lib/report-params";
 import { getUserReportRecord, listUserReport, type UserReportRow } from "@/lib/report-queries";
 import type { Tone } from "@/lib/status";
 import { btnPrimary, btnSecondary, btnTiny, inputClass, labelClass } from "@/lib/ui";
@@ -29,7 +29,7 @@ export async function generateMetadata(): Promise<Metadata> {
 const PATH = "/reports/users";
 const ROLE_TONE: Record<Role, Tone> = { EMPLOYEE: "slate", MANAGER: "indigo", IT_STAFF: "blue", ADMIN: "violet" };
 
-export default async function UserReportPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
+export default async function UserReportPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const actor = await requireSystemManager();
   // The user report is for administrators; a manager's reports are about their own requests.
   if (!isAdmin(actor)) redirect("/reports/requests");
@@ -40,8 +40,7 @@ export default async function UserReportPage({ searchParams }: { searchParams: P
   const editing = params.edit ? await getUserReportRecord(params.edit) : null;
   const hasFilters = Boolean(params.q || params.role || params.status || params.login);
 
-  const sorted = params.sort === "name" && params.dir === "asc" ? {} : { sort: params.sort, dir: params.dir };
-  const current = { q: params.q, role: params.role, status: params.status, login: params.login, ...sorted };
+  const current = userReportQuery(params);
   const hrefFor = (overrides: Record<string, string | number | undefined>) => buildReportHref(PATH, { ...current, ...overrides });
   // This same report without a pop-up: where closing, cancelling and saving lead back to.
   const closeHref = hrefFor({});
@@ -113,7 +112,7 @@ export default async function UserReportPage({ searchParams }: { searchParams: P
         total={report.total}
         q={params.q}
         searchPlaceholder={t("ค้นหาชื่อ อีเมล หรือแผนก", "ຄົ້ນຫາຊື່, ອີເມວ ຫຼື ພະແນກ", "Search by name, email or department")}
-        preserve={{ sort: sorted.sort, dir: sorted.dir }}
+        preserve={{ sort: current.sort, dir: current.dir }}
         hasFilters={hasFilters}
         filterCount={[params.role, params.status, params.login].filter(Boolean).length}
         clearHref={PATH}

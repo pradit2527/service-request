@@ -26,7 +26,7 @@ function monthName(key: string, lang: Lang): string {
   return new Intl.DateTimeFormat(INTL_LOCALE[lang], { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${key}-01T00:00:00Z`));
 }
 
-export default async function SummaryReportPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
+export default async function SummaryReportPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const user = await requireSystemManager();
   const { t, lang } = await getI18n();
   const now = new Date();
