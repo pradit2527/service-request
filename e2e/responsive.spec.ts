@@ -25,6 +25,8 @@ const PAGES = [
 
 for (const screen of SCREENS) {
   test(`no page scrolls sideways on a ${screen.name} (${screen.width} px)`, async ({ page }) => {
+    // Twenty pages, each compiled on its first visit by the development server: well over the default minute on a busy machine.
+    test.setTimeout(180_000);
     await page.setViewportSize({ width: screen.width, height: screen.height });
     await signIn(page, "admin");
     for (const path of PAGES) {

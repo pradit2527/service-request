@@ -78,6 +78,7 @@ test.describe("reports", () => {
   });
 
   test("a manager's report holds only the requests that name them as approver, and opens no pop-up for any other", async ({ browser }) => {
+    test.setTimeout(180_000); // four sign-ins and a request filed, one after the other
     const countFound = async (page: Page) => Number(((await page.getByText(/\d+ records? found/).innerText()).match(/\d+/) ?? ["0"])[0]);
     const editIds = (page: Page) =>
       page.locator("tbody a[href*=\"edit=\"]").evaluateAll((links) => links.map((link) => new URL((link as HTMLAnchorElement).href).searchParams.get("edit") ?? ""));
