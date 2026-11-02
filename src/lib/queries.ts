@@ -226,7 +226,7 @@ export async function getStaffInsights(now: Date = new Date()): Promise<StaffIns
   const windowStart = new Date(`${dailyCounts([], now, INSIGHT_DAYS)[0].date}T00:00:00+07:00`);
 
   const [recent, types, assigned] = await Promise.all([
-    db.serviceRequest.findMany({ where: { createdAt: { gte: windowStart }, deletedAt: null }, select: { createdAt: true }, take: 20_000 }),
+    db.serviceRequest.findMany({ where: { createdAt: { gte: windowStart }, deletedAt: null }, select: { createdAt: true, status: true }, take: 20_000 }),
     db.serviceRequest.groupBy({ by: ["type"], where: { createdAt: { gte: monthStart }, deletedAt: null }, _count: { _all: true } }),
     db.serviceRequest.groupBy({ by: ["assigneeId"], where: { status: { in: WORKLOAD_STATUSES }, deletedAt: null }, _count: { _all: true } }),
   ]);
@@ -239,7 +239,7 @@ export async function getStaffInsights(now: Date = new Date()): Promise<StaffIns
 
   return {
     daily: dailyCounts(
-      recent.map((row) => row.createdAt),
+      recent.map((row) => ({ createdAt: row.createdAt, closed: !OPEN_STATUSES.includes(row.status) })),
       now,
       INSIGHT_DAYS,
     ),

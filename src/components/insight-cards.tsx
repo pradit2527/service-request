@@ -2,7 +2,7 @@ import { ArrowDownRight, ArrowUpRight, Minus } from "lucide-react";
 import { getI18n } from "@/lib/i18n-server";
 import { INTL_LOCALE, type Lang } from "@/lib/i18n";
 import { formatNumber } from "@/lib/labels";
-import { trendSummary, type DayCount } from "@/lib/insights";
+import { niceScale, trendSummary, type DayCount } from "@/lib/insights";
 import type { StaffInsights } from "@/lib/queries";
 import { REQUEST_TYPE_DEFS } from "@/lib/request-types";
 import { cardClass } from "@/lib/ui";
@@ -13,8 +13,8 @@ import { TypeIcon } from "./type-icon";
 // text alternative for screen readers.
 
 const PERIOD = 14;
-// Height of the tallest bar, in px; the number above a bar sits on top of it.
-const PLOT_PX = 96;
+// Height of the plot area (the value axis from 0 to its top), in px.
+const PLOT_PX = 150;
 
 function dayLabel(date: string, lang: Lang) {
   return new Intl.DateTimeFormat(INTL_LOCALE[lang], { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(`${date}T00:00:00Z`));
@@ -33,13 +33,19 @@ function CardHeader({ title, subtitle }: { title: string; subtitle: string }) {
   );
 }
 
-/** Requests filed per day over the last two weeks: the total and how it compares, then one bar per day. */
+/**
+ * Requests filed per day over the last two weeks: the total and how it compares, then a column chart with a value
+ * axis and dashed gridlines. Each column is stacked: the requests already closed below, the ones still open above.
+ */
 export async function TrendCard({ daily }: { daily: DayCount[] }) {
   const { t, lang } = await getI18n();
   const summary = trendSummary(daily, PERIOD);
   const shown = daily.slice(-PERIOD);
-  const max = Math.max(1, ...shown.map((day) => day.count));
+  const scale = niceScale(Math.max(...shown.map((day) => day.count)));
+  const heightOf = (value: number) => (value / scale.max) * PLOT_PX;
   const n = (value: number) => formatNumber(value, lang);
+  const closedLabel = t("ปิดแล้ว", "ປິດແລ້ວ", "Closed");
+  const openLabel = t("ยังเปิดอยู่", "ຍັງເປີດຢູ່", "Still open");
 
   const compare =
     summary.previousTotal === 0 && summary.total === 0
@@ -80,39 +86,53 @@ export async function TrendCard({ daily }: { daily: DayCount[] }) {
       </div>
 
       <div role="img" aria-label={summaryText} className="mt-5">
-        <div className="relative h-[120px]">
-          <div className="absolute inset-x-0 border-t border-dashed border-slate-200/70" style={{ bottom: PLOT_PX }} aria-hidden />
-          <div className="absolute inset-x-0 border-t border-dashed border-slate-200/70" style={{ bottom: PLOT_PX / 2 }} aria-hidden />
-          <div className="relative flex h-full items-end gap-1 border-b border-slate-300">
-            {shown.map((day, index) => {
-              const isToday = index === shown.length - 1;
-              const height = day.count === 0 ? 3 : Math.max(6, Math.round((day.count / max) * PLOT_PX));
-              return (
-                <div
-                  key={day.date}
-                  className="group flex h-full flex-1 flex-col items-center justify-end gap-1"
-                  title={`${dayLabel(day.date, lang)} · ${n(day.count)}`}
-                >
-                  <span
-                    className={`text-[11px] leading-none font-semibold tabular-nums ${
-                      day.count === 0 ? "text-slate-300" : isToday ? "text-indigo-600" : "text-slate-700"
-                    }`}
-                  >
-                    {n(day.count)}
-                  </span>
+        <p className="mb-5 text-[11px] font-medium text-slate-500" aria-hidden>
+          {t("จำนวนคำขอ (รายการ)", "ຈຳນວນຄຳຂໍ (ລາຍການ)", "Requests (count)")}
+        </p>
+
+        <div className="flex">
+          <div className="relative mr-2 w-7 shrink-0" style={{ height: PLOT_PX }} aria-hidden>
+            {scale.ticks.map((tick) => (
+              <span
+                key={tick}
+                className="absolute right-0 translate-y-1/2 text-[11px] leading-none text-slate-500 tabular-nums"
+                style={{ bottom: heightOf(tick) }}
+              >
+                {n(tick)}
+              </span>
+            ))}
+          </div>
+
+          <div className="relative min-w-0 flex-1" style={{ height: PLOT_PX }}>
+            {scale.ticks
+              .filter((tick) => tick > 0)
+              .map((tick) => (
+                <div key={tick} className="absolute inset-x-0 border-t border-dashed border-slate-300/80" style={{ bottom: heightOf(tick) }} aria-hidden />
+              ))}
+            <div className="absolute inset-0 flex items-end border-b border-l border-slate-400/80">
+              {shown.map((day) => {
+                const open = day.count - day.closed;
+                return (
                   <div
-                    className={`w-full rounded-t-md transition-colors ${
-                      day.count === 0 ? "bg-slate-100" : isToday ? "bg-indigo-600" : "bg-indigo-300 group-hover:bg-indigo-400"
-                    }`}
-                    style={{ height }}
-                  />
-                </div>
-              );
-            })}
+                    key={day.date}
+                    className="group flex h-full flex-1 flex-col items-center justify-end"
+                    title={`${dayLabel(day.date, lang)} · ${n(day.count)} (${closedLabel} ${n(day.closed)} · ${openLabel} ${n(open)})`}
+                  >
+                    <span className={`mb-1 text-[11px] leading-none font-semibold tabular-nums ${day.count === 0 ? "text-slate-300" : "text-slate-700"}`}>
+                      {n(day.count)}
+                    </span>
+                    <div className="flex w-[68%] flex-col-reverse transition-opacity group-hover:opacity-80">
+                      {day.closed > 0 && <div className="rounded-t-[3px] bg-indigo-500" style={{ height: Math.max(3, heightOf(day.closed)) }} />}
+                      {open > 0 && <div className="rounded-t-[3px] bg-amber-400" style={{ height: Math.max(3, heightOf(open)) }} />}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
 
-        <div className="mt-1.5 flex gap-1" aria-hidden>
+        <div className="mt-1.5 ml-9 flex" aria-hidden>
           {shown.map((day, index) => {
             const isToday = index === shown.length - 1;
             const dayOfMonth = Number(day.date.slice(8));
@@ -125,8 +145,22 @@ export async function TrendCard({ daily }: { daily: DayCount[] }) {
             );
           })}
         </div>
+        <p className="mt-0.5 ml-9 text-center text-[11px] font-medium text-slate-500" aria-hidden>
+          {t("วันที่ยื่นคำขอ", "ວັນທີຍື່ນຄຳຂໍ", "Date filed")}
+        </p>
 
-        <div className="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-slate-100 pt-3 text-[11px] text-slate-500">
+        <ul className="mt-3 flex flex-wrap items-center justify-center gap-x-5 gap-y-1 text-xs text-slate-600" aria-hidden>
+          <li className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-sm bg-indigo-500" />
+            {closedLabel}
+          </li>
+          <li className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-sm bg-amber-400" />
+            {openLabel}
+          </li>
+        </ul>
+
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-slate-100 pt-3 text-[11px] text-slate-500">
           <span>{t("ตัวเลขบนแท่ง = จำนวนคำขอที่ยื่นในวันนั้น", "ຕົວເລກເທິງແທ່ງ = ຈຳນວນຄຳຂໍທີ່ຍື່ນໃນມື້ນັ້ນ", "Number on a bar = requests filed that day")}</span>
           {summary.peak && (
             <span className="font-medium text-slate-700">

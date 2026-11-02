@@ -2,26 +2,45 @@
 
 import { bangkokDateString } from "./report-params";
 
-export type DayCount = { date: string; count: number };
+/** `count` requests were filed on `date`; `closed` of them are closed by now, the rest are still open. */
+export type DayCount = { date: string; count: number; closed: number };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
  * One entry per day for the last `days` days, oldest first and ending with today, where a day runs from midnight to
- * midnight in Bangkok. Days with nothing filed count 0; dates outside the window are ignored.
+ * midnight in Bangkok. Days with nothing filed count 0; requests outside the window are ignored.
  */
-export function dailyCounts(dates: Date[], now: Date, days: number): DayCount[] {
+export function dailyCounts(requests: { createdAt: Date; closed: boolean }[], now: Date, days: number): DayCount[] {
   // Bangkok has no daylight saving, so a day is always 24 hours.
   const series: DayCount[] = Array.from({ length: days }, (_, index) => ({
     date: bangkokDateString(new Date(now.getTime() - (days - 1 - index) * DAY_MS)),
     count: 0,
+    closed: 0,
   }));
   const byDate = new Map(series.map((day) => [day.date, day]));
-  for (const date of dates) {
-    const day = byDate.get(bangkokDateString(date));
-    if (day) day.count += 1;
+  for (const request of requests) {
+    const day = byDate.get(bangkokDateString(request.createdAt));
+    if (!day) continue;
+    day.count += 1;
+    if (request.closed) day.closed += 1;
   }
   return series;
+}
+
+/**
+ * A round scale for a chart's value axis: the top (at least `maxValue`) and the ticks from 0 to it, one, two or five
+ * (times a power of ten) apart, so there are at most five steps. It never comes out flat: the least top is 1.
+ */
+export function niceScale(maxValue: number): { max: number; ticks: number[] } {
+  const target = Math.max(1, Math.ceil(maxValue));
+  for (let magnitude = 1; ; magnitude *= 10) {
+    for (const base of [1, 2, 5]) {
+      const step = base * magnitude;
+      const steps = Math.ceil(target / step);
+      if (steps <= 5) return { max: steps * step, ticks: Array.from({ length: steps + 1 }, (_, index) => index * step) };
+    }
+  }
 }
 
 export type TrendSummary = {
