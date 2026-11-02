@@ -24,6 +24,8 @@ describe("catalog: categories and audiences", () => {
     expect(audienceOf("hardware")).toEqual(["internal"]);
     expect(audienceOf("access")).toEqual(["client", "internal"]);
     expect(audienceOf("other")).toEqual(["client", "internal"]);
+    expect(audienceOf("security")).toEqual(["internal"]);
+    expect(audienceOf("people")).toEqual(["internal"]);
   });
 
   it("puts the new types in the categories that match the catalog", () => {
@@ -35,6 +37,11 @@ describe("catalog: categories and audiences", () => {
     expect(categoryOf("CONSULTATION").key).toBe("training");
     expect(categoryOf("FIREWALL").key).toBe("cloud");
     expect(categoryOf("ENVIRONMENT").key).toBe("cloud");
+    expect(categoryOf("CLOUD_RESOURCE").key).toBe("cloud");
+    expect(categoryOf("API_CREDENTIAL").key).toBe("security");
+    expect(categoryOf("SECURITY_REVIEW").key).toBe("security");
+    expect(categoryOf("ONBOARDING").key).toBe("people");
+    expect(categoryOf("OFFBOARDING").key).toBe("people");
   });
 });
 
@@ -52,11 +59,16 @@ describe("new request types", () => {
     "ENVIRONMENT",
     "FIREWALL",
     "RESOURCE_UPGRADE",
+    "CLOUD_RESOURCE",
+    "API_CREDENTIAL",
+    "SECURITY_REVIEW",
+    "ONBOARDING",
+    "OFFBOARDING",
   ] as const;
 
   it("are recognised as request types", () => {
     for (const type of NEW_TYPES) expect(isRequestType(type)).toBe(true);
-    expect(REQUEST_TYPES).toHaveLength(21);
+    expect(REQUEST_TYPES).toHaveLength(26);
   });
 
   it("ask for every required field when the form is empty, in every language", () => {
@@ -132,6 +144,61 @@ describe("new request types", () => {
   });
 });
 
+describe("DevOps, security and people request types", () => {
+  it("ask for a backup confirmation only when deleting a cloud resource, and an environment only for non-repository resources", () => {
+    const base = { provider: "aws", resourceKind: "bucket", resourceName: "app-assets", project: "Shop", environment: "staging" };
+    expect(validateDetails("CLOUD_RESOURCE", { ...base, action: "create" }, "th").errors).toEqual({});
+    expect(Object.keys(validateDetails("CLOUD_RESOURCE", { ...base, action: "delete" }, "th").errors)).toEqual(["backedUp"]);
+    expect(validateDetails("CLOUD_RESOURCE", { ...base, action: "delete", backedUp: "yes" }, "th").errors).toEqual({});
+    const repo = { action: "create", provider: "github", resourceKind: "repository", resourceName: "shop-api", project: "Shop" };
+    expect(validateDetails("CLOUD_RESOURCE", repo, "th").errors).toEqual({});
+    expect(validateDetails("CLOUD_RESOURCE", { ...repo, environment: "prod" }, "th").values).not.toHaveProperty("environment");
+  });
+
+  it("only offer Sandbox, Staging and Production for a cloud resource", () => {
+    const base = { action: "create", provider: "gcp", resourceKind: "project", resourceName: "shop", project: "Shop" };
+    for (const environment of ["sandbox", "staging", "prod"]) expect(validateDetails("CLOUD_RESOURCE", { ...base, environment }, "th").errors).toEqual({});
+    expect(validateDetails("CLOUD_RESOURCE", { ...base, environment: "dev" }, "th").errors.environment).toBeDefined();
+  });
+
+  it("ask for an end date only when a credential is temporary", () => {
+    const base = { credentialKind: "cloud-key", service: "AWS account 1234", project: "Shop", environment: "dev", scope: "S3 read-only" };
+    expect(validateDetails("API_CREDENTIAL", { ...base, duration: "permanent" }, "th").errors).toEqual({});
+    expect(Object.keys(validateDetails("API_CREDENTIAL", { ...base, duration: "temporary" }, "th").errors)).toEqual(["expiresOn"]);
+    expect(validateDetails("API_CREDENTIAL", { ...base, duration: "temporary", expiresOn: "2026-12-31" }, "th").errors).toEqual({});
+  });
+
+  it("ask about the library licence only for a third-party library", () => {
+    const base = { itemName: "left-pad", usedFor: "customer-project", touchesData: "no" };
+    expect(validateDetails("SECURITY_REVIEW", { ...base, reviewKind: "third-party-lib", license: "MIT" }, "th").values).toHaveProperty("license", "MIT");
+    const byod = validateDetails("SECURITY_REVIEW", { ...base, reviewKind: "byod", license: "MIT" }, "th");
+    expect(byod.errors).toEqual({});
+    expect(byod.values).not.toHaveProperty("license");
+  });
+
+  it("ask for a delivery place only when the new employee gets a device", () => {
+    const base = { newUser: "Somchai", startDate: "2026-12-01", team: "Backend", accounts: "GitHub, Slack, Jira" };
+    expect(validateDetails("ONBOARDING", { ...base, deviceKind: "none" }, "th").errors).toEqual({});
+    expect(Object.keys(validateDetails("ONBOARDING", { ...base, deviceKind: "macbook" }, "th").errors)).toEqual(["deliveryLocation"]);
+    expect(validateDetails("ONBOARDING", { ...base, deviceKind: "macbook", deliveryLocation: "A-3" }, "th").errors).toEqual({});
+  });
+
+  it("ask for asset tags only when devices come back, and a project only when the scope is one project", () => {
+    const base = { leavingUser: "Somchai", reason: "resign", lastDay: "2026-12-31", revokeScope: "all", returnDevices: "no" };
+    expect(validateDetails("OFFBOARDING", base, "th").errors).toEqual({});
+    expect(Object.keys(validateDetails("OFFBOARDING", { ...base, returnDevices: "yes" }, "th").errors)).toEqual(["assetTags"]);
+    expect(Object.keys(validateDetails("OFFBOARDING", { ...base, revokeScope: "project-only" }, "th").errors)).toEqual(["project"]);
+    const dropped = validateDetails("OFFBOARDING", { ...base, project: "Shop", assetTags: "NB-1" }, "th");
+    expect(dropped.values).not.toHaveProperty("project");
+    expect(dropped.values).not.toHaveProperty("assetTags");
+  });
+
+  it("describe the stored details in every language", () => {
+    const details = { action: "delete", provider: "azure", resourceKind: "vm", resourceName: "vm-1", project: "Shop", environment: "prod", backedUp: "yes" };
+    for (const lang of LANGS) expect(describeDetails("CLOUD_RESOURCE", details, lang)).toHaveLength(7);
+  });
+});
+
 describe("extended options of existing types", () => {
   it("let access requests target development tools and special environments", () => {
     const base = { action: "grant", targetUser: "a@example.com", accessLevel: "write", duration: "permanent" };
@@ -167,6 +234,21 @@ describe("extended options of existing types", () => {
     expect(validateDetails("PUBLIC_IP_DOMAIN", { ...base, kind: "ssl-only" }, "th").values).not.toHaveProperty("sslCertificate");
     expect(validateDetails("PUBLIC_IP_DOMAIN", { ...base, kind: "cloudflare" }, "th").errors.sslCertificate).toBeDefined();
     expect(validateDetails("PUBLIC_IP_DOMAIN", { targetServer: "i-0abc", kind: "ssl-only" }, "th").errors.domainName).toBeDefined();
+  });
+
+  it("let access requests target a project database and cloud IAM, which need an environment", () => {
+    const base = { action: "grant", targetUser: "a@example.com", accessLevel: "read", duration: "permanent", systemDetail: "shop-db" };
+    for (const system of ["database", "cloud-iam"]) {
+      expect(Object.keys(validateDetails("ACCESS_ACCOUNT", { ...base, system }, "th").errors)).toEqual(["environment"]);
+      expect(validateDetails("ACCESS_ACCOUNT", { ...base, system, environment: "prod" }, "th").errors).toEqual({});
+    }
+    expect(validateDetails("ACCESS_ACCOUNT", { ...base, system: "git", environment: "prod" }, "th").values).not.toHaveProperty("environment");
+  });
+
+  it("offer basic tool setup as a consultation topic and docking / ergonomic gear as equipment", () => {
+    expect(validateDetails("CONSULTATION", { topic: "tool-setup", channel: "message" }, "th").errors).toEqual({});
+    const base = { action: "new", specification: "", quantity: "1", forUser: "a@example.com", deliveryLocation: "A-3" };
+    expect(validateDetails("HARDWARE", { ...base, deviceType: "dock-ergonomic" }, "th").errors).toEqual({});
   });
 
   it("offer API integration as a consultation topic", () => {

@@ -101,7 +101,17 @@ export function classifyTier(type: RequestType, details: Record<string, unknown>
     case "DATABASE":
     case "ENVIRONMENT":
     case "TRAINING":
+    case "SECURITY_REVIEW":
       return "COMPLEX";
+    case "CLOUD_RESOURCE":
+      // Creating a resource needs the longest lead time; deleting one is planned work.
+      return details.action === "delete" ? "PROVISIONING" : "COMPLEX";
+    case "ONBOARDING":
+      // The new hire gets a device, so it follows the procurement lead time.
+      return "HARDWARE";
+    case "OFFBOARDING":
+      // Removing access has to be quick.
+      return "STANDARD";
     case "DEPLOYMENT":
       // A hotfix is urgent: it gets the quickest tier, a scheduled deployment is planned work.
       return details.deployKind === "hotfix" ? "STANDARD" : "PROVISIONING";
@@ -115,6 +125,7 @@ export function classifyTier(type: RequestType, details: Record<string, unknown>
     case "SYSTEM_CONFIG":
     case "FIREWALL":
     case "RESOURCE_UPGRADE":
+    case "API_CREDENTIAL":
     case "OTHER":
       return "PROVISIONING";
   }

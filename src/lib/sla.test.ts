@@ -184,6 +184,19 @@ describe("classifyTier", () => {
     expect(classifyTier("BACKUP_RESTORE", { action: "restore" })).toBe("PROVISIONING");
   });
 
+  it("gives creating a cloud resource the longest lead time and deleting one planned time", () => {
+    expect(classifyTier("CLOUD_RESOURCE", { action: "create" })).toBe("COMPLEX");
+    expect(classifyTier("CLOUD_RESOURCE", { action: "delete" })).toBe("PROVISIONING");
+  });
+
+  it("classifies credentials, security reviews, onboarding and offboarding", () => {
+    expect(classifyTier("API_CREDENTIAL", {})).toBe("PROVISIONING");
+    expect(classifyTier("SECURITY_REVIEW", {})).toBe("COMPLEX");
+    // Onboarding hands over a device, so it follows the procurement lead time; removing access must be quick.
+    expect(classifyTier("ONBOARDING", {})).toBe("HARDWARE");
+    expect(classifyTier("OFFBOARDING", {})).toBe("STANDARD");
+  });
+
   it("classifies the other new types", () => {
     expect(classifyTier("DOCUMENT", {})).toBe("STANDARD");
     for (const type of ["DATA_EXTRACT", "DATA_CORRECTION", "BULK_IMPORT", "REPORT_TEMPLATE", "SYSTEM_CONFIG", "FIREWALL", "RESOURCE_UPGRADE"] as const) {

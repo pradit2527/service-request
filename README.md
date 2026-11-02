@@ -23,11 +23,11 @@
 
 ฟิลด์ทั้งหมดกำหนดที่เดียวใน [`src/lib/request-types.ts`](src/lib/request-types.ts) ใช้ทั้งสร้างฟอร์ม (ช่องที่แสดงเปลี่ยนตามคำตอบ) และตรวจข้อมูลฝั่ง server
 
-มี 21 ประเภท แบ่งเป็น 9 หมวด และแต่ละหมวดติดป้ายว่าเป็นของ **ลูกค้า / ผู้ใช้งานระบบ**, **ทีมงานภายใน** หรือทั้งสองกลุ่ม หน้า "สร้างคำขอใหม่" จัดกลุ่มตามหมวด มีแท็บกรอง ทั้งหมด / ลูกค้า / ทีมงานภายใน และช่องค้นหา (กลุ่มของแต่ละหมวดกำหนดที่ `audience` ใน `REQUEST_CATEGORIES`) และมีข้อความบอกว่า Change Request (เพิ่ม/ลด/แก้ไขฟังก์ชันซอฟต์แวร์ ต้องประเมิน Manday / งบประมาณ) ไม่ใช่คำขอบริการ
+มี 26 ประเภท แบ่งเป็น 11 หมวด และแต่ละหมวดติดป้ายว่าเป็นของ **ลูกค้า / ผู้ใช้งานระบบ**, **ทีมงานภายใน** หรือทั้งสองกลุ่ม หน้า "สร้างคำขอใหม่" จัดกลุ่มตามหมวด มีแท็บกรอง ทั้งหมด / ลูกค้า / ทีมงานภายใน และช่องค้นหา (กลุ่มของแต่ละหมวดกำหนดที่ `audience` ใน `REQUEST_CATEGORIES`) และมีข้อความบอกว่า Change Request (เพิ่ม/ลด/แก้ไขฟังก์ชันซอฟต์แวร์ ต้องประเมิน Manday / งบประมาณ) ไม่ใช่คำขอบริการ
 
 | หมวด (กลุ่ม) | ประเภท | ระดับ SLA เริ่มต้น |
 | --- | --- | --- |
-| Access & Permission (ลูกค้า + ภายใน) | ขอสิทธิ์ / บัญชีผู้ใช้: สร้าง/ถอนบัญชี, ปรับระดับสิทธิ์, รีเซ็ต/ปลดล็อก, และระบบ Email, Shared Folder, ERP / CRM, Cloud, Git, Jira / ClickUp, Server (SSH / VPN), Staging / UAT | Standard (รีเซ็ต, ปลดล็อก, ถอนสิทธิ์, Shared Folder) · ที่เหลือ Provisioning |
+| Access & Permission (ลูกค้า + ภายใน) | ขอสิทธิ์ / บัญชีผู้ใช้: สร้าง/ถอนบัญชี, ปรับระดับสิทธิ์, รีเซ็ต/ปลดล็อก, และระบบ Email, Shared Folder, ERP / CRM, Cloud, Git, Jira / ClickUp, Server (SSH / VPN / Bastion / Zero Trust), Database ของโปรเจกต์ (แยกตาม Environment), Cloud IAM, Staging / UAT | Standard (รีเซ็ต, ปลดล็อก, ถอนสิทธิ์, Shared Folder) · ที่เหลือ Provisioning |
 | Data & Reporting (ลูกค้า) | ขอดึงข้อมูลพิเศษ | Provisioning |
 | | ขอแก้ไขข้อมูลใน Database | Provisioning |
 | | ขอ Import ข้อมูลชุดใหญ่ | Provisioning |
@@ -35,14 +35,19 @@
 | Deployment & Configuration (ลูกค้า) | ขอปรับตั้งค่าระบบ | Provisioning |
 | | ขอ Scheduled Deployment / Hotfix | Hotfix → Standard · Scheduled → Provisioning |
 | | ขอ Backup / Restore ข้อมูล | Snapshot → Standard · Restore → Provisioning |
-| Training & Advisory (ลูกค้า + ภายใน) | ขอคำปรึกษา (รวมการต่อเชื่อม API ก่อนทำ CR) | Standard |
+| Training & Advisory (ลูกค้า + ภายใน) | ขอคำปรึกษา (รวมการต่อเชื่อม API ก่อนทำ CR และช่วยตั้งค่าเครื่องมือพื้นฐาน เช่น SSH Key / VPN) | Standard |
 | | ขอจัดอบรมการใช้งานระบบ | Complex |
 | | ขอเอกสาร / คู่มือ / API Documentation | Standard |
 | Cloud & Infrastructure (ภายใน) | ขอสร้าง Environment ใหม่ · Server บน AWS · Database (Supabase / MongoDB) | Complex |
+| | ขอสร้าง / ลบ Cloud Resource หรือ Repository (S3, GCP Project, Azure VM, GitHub / GitLab) | สร้าง → Complex · ลบ → Provisioning |
 | | Public IP / Domain / SSL / Cloudflare · ขอเปิด Port / Firewall / Whitelist IP · ขอเพิ่ม Resource Server | Provisioning |
 | Software & License (ภายใน) | ติดตั้งซอฟต์แวร์ / License / ฟอนต์ / AI Tools | Provisioning (ฟอนต์ → Standard, ต้องซื้อ License → Hardware / Procurement) |
-| Hardware (ภายใน) | ขอเบิก / เพิ่มอุปกรณ์ (โน้ตบุ๊ก จอ RAM เครื่องทดสอบ อุปกรณ์ Demo) | Hardware / Procurement |
+| Hardware (ภายใน) | ขอเบิก / เพิ่มอุปกรณ์ (โน้ตบุ๊ก จอ RAM เครื่องทดสอบ อุปกรณ์ Demo Docking Station / เออร์โกโนมิกส์) | Hardware / Procurement |
 | Workplace & Network (ภายใน) | สายแลน / ย้ายโต๊ะ / เซ็ตอัพอุปกรณ์ | ย้ายโต๊ะ → Complex · ที่เหลือ Provisioning |
+| Security & Credentials (ภายใน) | ขอ Access Key / Token / API Key (Cloud, Git, OpenAI / SendGrid / Twilio ฯลฯ; ห้ามพิมพ์ Secret ลงในคำขอ ทีม IT ส่งให้ทางช่องทางที่ปลอดภัย) | Provisioning |
+| | ขอ Security Review (BYOD, Library / ซอฟต์แวร์ภายนอกที่ไม่อยู่ในรายการอนุมัติ) | Complex |
+| Onboarding & Offboarding (ภายใน) | เตรียมเครื่องและระบบสำหรับพนักงานใหม่ (Dev Onboarding) | Hardware / Procurement |
+| | ถอนสิทธิ์และส่งคืนทรัพย์สิน (Offboarding) | Standard |
 | อื่นๆ (ลูกค้า + ภายใน) | อื่นๆ | Provisioning |
 
 **เพิ่มประเภทคำขอใหม่:** (1) เพิ่มค่าใน `enum RequestType` ของ [`prisma/schema.prisma`](prisma/schema.prisma) แล้วสร้าง migration (`ALTER TYPE "RequestType" ADD VALUE ...`) (2) เพิ่มชื่อใน `REQUEST_TYPES` และจัดเข้าหมวดใน `REQUEST_CATEGORIES` (3) เขียนนิยามฟิลด์ 3 ภาษาในโฟลเดอร์ [`src/lib/request-type-defs/`](src/lib/request-type-defs/) (4) กำหนดระดับ SLA ใน `classifyTier` ของ `sla.ts` (ทุกประเภทผ่านหัวหน้าอนุมัติเหมือนกัน ไม่ต้องตั้งกฎอนุมัติรายประเภท) (5) เพิ่มไอคอนใน `type-icon.tsx` ถ้าลืมข้อใดข้อหนึ่ง TypeScript หรือเทสต์จะแจ้ง

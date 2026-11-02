@@ -7,7 +7,9 @@
 import { l, makeT, type Lang, type Localized } from "@/lib/i18n";
 import { DATA_REPORTING_DEFS } from "@/lib/request-type-defs/data-reporting";
 import { DEPLOYMENT_TRAINING_DEFS } from "@/lib/request-type-defs/deployment-training";
+import { DEVOPS_SECURITY_DEFS } from "@/lib/request-type-defs/devops-security";
 import { INFRASTRUCTURE_DEFS } from "@/lib/request-type-defs/infrastructure";
+import { PEOPLE_DEFS } from "@/lib/request-type-defs/people";
 import { ENVIRONMENT, YES_NO } from "@/lib/request-type-shared";
 
 export const REQUEST_TYPES = [
@@ -32,6 +34,11 @@ export const REQUEST_TYPES = [
   "ENVIRONMENT",
   "FIREWALL",
   "RESOURCE_UPGRADE",
+  "CLOUD_RESOURCE",
+  "API_CREDENTIAL",
+  "SECURITY_REVIEW",
+  "ONBOARDING",
+  "OFFBOARDING",
 ] as const;
 
 export type RequestType = (typeof REQUEST_TYPES)[number];
@@ -119,12 +126,12 @@ export const REQUEST_CATEGORIES = [
     key: "cloud",
     label: l("Cloud & Infrastructure", "Cloud & Infrastructure", "Cloud & Infrastructure"),
     description: l(
-      "Environment, Server บน AWS, Database, Public IP / Domain, Firewall และเพิ่ม Resource",
-      "Environment, Server ເທິງ AWS, Database, Public IP / Domain, Firewall ແລະ ເພີ່ມ Resource",
-      "Environments, servers on AWS, databases, Public IP / Domain, firewall and extra resources",
+      "Environment, Server บน AWS, Database, Cloud Resource / Repository, Public IP / Domain, Firewall และเพิ่ม Resource",
+      "Environment, Server ເທິງ AWS, Database, Cloud Resource / Repository, Public IP / Domain, Firewall ແລະ ເພີ່ມ Resource",
+      "Environments, servers on AWS, databases, cloud resources / repositories, Public IP / Domain, firewall and extra resources",
     ),
     audience: ["internal"],
-    types: ["ENVIRONMENT", "AWS_SERVER", "DATABASE", "PUBLIC_IP_DOMAIN", "FIREWALL", "RESOURCE_UPGRADE"],
+    types: ["ENVIRONMENT", "AWS_SERVER", "DATABASE", "CLOUD_RESOURCE", "PUBLIC_IP_DOMAIN", "FIREWALL", "RESOURCE_UPGRADE"],
   },
   {
     key: "software",
@@ -158,6 +165,28 @@ export const REQUEST_CATEGORIES = [
     ),
     audience: ["internal"],
     types: ["NETWORK_WORKPLACE"],
+  },
+  {
+    key: "security",
+    label: l("Security & Credentials", "Security & Credentials", "Security & Credentials"),
+    description: l(
+      "ขอ Access Key / Token / API Key และขอให้ตรวจสอบความปลอดภัย (BYOD, Library / ซอฟต์แวร์ภายนอก)",
+      "ຂໍ Access Key / Token / API Key ແລະ ຂໍໃຫ້ກວດສອບຄວາມປອດໄພ (BYOD, Library / ຊອບແວພາຍນອກ)",
+      "Access keys / tokens / API keys, and security reviews (BYOD, external libraries / software)",
+    ),
+    audience: ["internal"],
+    types: ["API_CREDENTIAL", "SECURITY_REVIEW"],
+  },
+  {
+    key: "people",
+    label: l("Onboarding & Offboarding", "Onboarding & Offboarding", "Onboarding & Offboarding"),
+    description: l(
+      "เตรียมเครื่องและสิทธิ์ให้พนักงานใหม่ และถอนสิทธิ์ / เก็บอุปกรณ์คืนเมื่อสิ้นสุดโปรเจกต์หรือลาออก",
+      "ເຕຣຽມເຄື່ອງ ແລະ ສິດໃຫ້ພະນັກງານໃໝ່ ແລະ ຖອນສິດ / ເກັບອຸປະກອນຄືນເມື່ອສິ້ນສຸດໂປຣເຈັກ ຫຼື ລາອອກ",
+      "Get equipment and access ready for new hires, and remove access / collect equipment when a project ends or someone leaves",
+    ),
+    audience: ["internal"],
+    types: ["ONBOARDING", "OFFBOARDING"],
   },
   {
     key: "other",
@@ -222,6 +251,14 @@ export const REQUEST_TYPE_DEFS: Record<RequestType, RequestTypeDef> = {
               "เมาส์ / คีย์บอร์ด / อุปกรณ์ต่อพ่วง",
               "ເມົ້າ / ຄີບອດ / ອຸປະກອນຕໍ່ພ່ວງ",
               "Mouse / keyboard / peripherals",
+            ),
+          },
+          {
+            value: "dock-ergonomic",
+            label: l(
+              "Docking Station / อุปกรณ์เออร์โกโนมิกส์",
+              "Docking Station / ອຸປະກອນເອີໂກໂນມິກ",
+              "Docking station / ergonomic equipment",
             ),
           },
           { value: "memory-storage", label: l("RAM / SSD / ฮาร์ดดิสก์", "RAM / SSD / ຮາດດິດ", "RAM / SSD / hard disk") },
@@ -404,9 +441,25 @@ export const REQUEST_TYPE_DEFS: Record<RequestType, RequestTypeDef> = {
           {
             value: "server-access",
             label: l(
-              "Cloud / Database Server (SSH Key, VPN, Supabase / Postgres)",
-              "Cloud / Database Server (SSH Key, VPN, Supabase / Postgres)",
-              "Cloud / database server (SSH key, VPN, Supabase / Postgres)",
+              "Cloud / Database Server (SSH Key, VPN, Bastion Host, Zero Trust, Supabase / Postgres)",
+              "Cloud / Database Server (SSH Key, VPN, Bastion Host, Zero Trust, Supabase / Postgres)",
+              "Cloud / database server (SSH key, VPN, bastion host, Zero Trust, Supabase / Postgres)",
+            ),
+          },
+          {
+            value: "database",
+            label: l(
+              "Database ของโปรเจกต์ (อ่านอย่างเดียว / เขียน แยกตาม Environment)",
+              "Database ຂອງໂປຣເຈັກ (ອ່ານຢ່າງດຽວ / ຂຽນ ແຍກຕາມ Environment)",
+              "Project database (read-only / write, per environment)",
+            ),
+          },
+          {
+            value: "cloud-iam",
+            label: l(
+              "Cloud IAM Permissions (AWS, GCP, Azure)",
+              "Cloud IAM Permissions (AWS, GCP, Azure)",
+              "Cloud IAM permissions (AWS, GCP, Azure)",
             ),
           },
           {
@@ -430,7 +483,18 @@ export const REQUEST_TYPE_DEFS: Record<RequestType, RequestTypeDef> = {
           "ເຊັ່ນ \\\\fileserver\\Finance, SAP, GitHub organization",
           "e.g. \\\\fileserver\\Finance, SAP, GitHub organization",
         ),
-        showWhen: { field: "system", in: ["shared-folder", "erp-crm", "cloud", "git", "pm-tool", "server-access", "special-env", "other"] },
+        showWhen: {
+          field: "system",
+          in: ["shared-folder", "erp-crm", "cloud", "git", "pm-tool", "server-access", "database", "cloud-iam", "special-env", "other"],
+        },
+      },
+      {
+        name: "environment",
+        label: l("สภาพแวดล้อม", "ສະພາບແວດລ້ອມ", "Environment"),
+        kind: "select",
+        required: true,
+        options: ENVIRONMENT,
+        showWhen: { field: "system", in: ["database", "cloud-iam"] },
       },
       {
         name: "action",
@@ -544,6 +608,14 @@ export const REQUEST_TYPE_DEFS: Record<RequestType, RequestTypeDef> = {
               "การต่อเชื่อม API กับระบบภายนอก (ก่อนทำ Change Request)",
               "ການເຊື່ອມຕໍ່ API ກັບລະບົບພາຍນອກ (ກ່ອນເຮັດ Change Request)",
               "Connecting an API to an external system (before a Change Request)",
+            ),
+          },
+          {
+            value: "tool-setup",
+            label: l(
+              "ช่วยตั้งค่าเครื่องมือพื้นฐาน (SSH Key, VPN, สิทธิ์ใน Jira / Confluence)",
+              "ຊ່ວຍຕັ້ງຄ່າເຄື່ອງມືພື້ນຖານ (SSH Key, VPN, ສິດໃນ Jira / Confluence)",
+              "Help setting up basic tools (SSH key, VPN, Jira / Confluence access)",
             ),
           },
           { value: "other", label: l("อื่นๆ", "ອື່ນໆ", "Other") },
@@ -905,6 +977,8 @@ export const REQUEST_TYPE_DEFS: Record<RequestType, RequestTypeDef> = {
   ...DATA_REPORTING_DEFS,
   ...DEPLOYMENT_TRAINING_DEFS,
   ...INFRASTRUCTURE_DEFS,
+  ...DEVOPS_SECURITY_DEFS,
+  ...PEOPLE_DEFS,
 };
 
 export function isRequestType(value: unknown): value is RequestType {
