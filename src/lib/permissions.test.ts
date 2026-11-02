@@ -3,7 +3,13 @@ import {
   allowedStatusChanges,
   canCancelRequest,
   canComment,
+  canCreateUser,
   canDecideAsManager,
+  canDeleteKb,
+  canEditKb,
+  canEditRequest,
+  canManageSystem,
+  canModifyUser,
   canPostInternalNote,
   canViewRequest,
   isManager,
@@ -147,5 +153,93 @@ describe("changing status", () => {
   it("lets an admin refuse their own request", () => {
     const result = allowedStatusChanges(admin, { requesterId: admin.id, status: "SUBMITTED" });
     expect(result).toContain("REJECTED");
+  });
+});
+
+describe("system management", () => {
+  const adminTarget = { id: "a2", role: "ADMIN" as const, isActive: true };
+  const empTarget = { id: "e2", role: "EMPLOYEE" as const, isActive: true };
+
+  it("is open to admins and managers only", () => {
+    expect([employee, staff, manager, admin].map(canManageSystem)).toEqual([false, false, true, true]);
+  });
+
+  it("refuses employees and IT staff any change to a user", () => {
+    for (const actor of [employee, staff]) {
+      expect(canModifyUser(actor, empTarget, { role: "EMPLOYEE", isActive: true })).toEqual({ ok: false, reason: "not-allowed" });
+    }
+  });
+
+  it("keeps admin accounts out of a manager's reach", () => {
+    expect(canModifyUser(manager, adminTarget, { role: "ADMIN", isActive: true })).toEqual({ ok: false, reason: "admin-protected" });
+    expect(canModifyUser(manager, adminTarget, { delete: true })).toEqual({ ok: false, reason: "admin-protected" });
+  });
+
+  it("stops a manager making anyone an admin, themselves included", () => {
+    expect(canModifyUser(manager, empTarget, { role: "ADMIN", isActive: true })).toEqual({ ok: false, reason: "admin-grant" });
+    const self = { id: manager.id, role: "MANAGER" as const, isActive: true };
+    expect(canModifyUser(manager, self, { role: "ADMIN", isActive: true })).toEqual({ ok: false, reason: "admin-grant" });
+  });
+
+  it("lets a manager edit, disable and delete users who are not admins", () => {
+    expect(canModifyUser(manager, empTarget, { role: "IT_STAFF", isActive: false })).toEqual({ ok: true });
+    expect(canModifyUser(manager, empTarget, { delete: true })).toEqual({ ok: true });
+  });
+
+  it("lets an admin change and remove other admins", () => {
+    expect(canModifyUser(admin, adminTarget, { role: "EMPLOYEE", isActive: true })).toEqual({ ok: true });
+    expect(canModifyUser(admin, adminTarget, { delete: true })).toEqual({ ok: true });
+  });
+
+  it("never lets anyone change their own role or status, or delete themselves", () => {
+    const self = { id: admin.id, role: "ADMIN" as const, isActive: true };
+    expect(canModifyUser(admin, self, { role: "EMPLOYEE", isActive: true })).toEqual({ ok: false, reason: "self" });
+    expect(canModifyUser(admin, self, { role: "ADMIN", isActive: false })).toEqual({ ok: false, reason: "self" });
+    expect(canModifyUser(admin, self, { delete: true })).toEqual({ ok: false, reason: "self" });
+  });
+
+  it("still lets someone edit their own profile fields", () => {
+    const self = { id: admin.id, role: "ADMIN" as const, isActive: true };
+    expect(canModifyUser(admin, self, { role: "ADMIN", isActive: true })).toEqual({ ok: true });
+  });
+
+  it("protects the last admin: only another admin can touch an admin, and nobody can touch themselves", () => {
+    const soleAdmin = { id: admin.id, role: "ADMIN" as const, isActive: true };
+    for (const actor of [employee, staff, manager]) {
+      expect(canModifyUser(actor, soleAdmin, { role: "EMPLOYEE", isActive: true }).ok).toBe(false);
+      expect(canModifyUser(actor, soleAdmin, { role: "ADMIN", isActive: false }).ok).toBe(false);
+      expect(canModifyUser(actor, soleAdmin, { delete: true }).ok).toBe(false);
+    }
+    expect(canModifyUser(admin, soleAdmin, { delete: true })).toEqual({ ok: false, reason: "self" });
+  });
+
+  it("lets only an admin create admins", () => {
+    expect(canCreateUser(admin, "ADMIN")).toBe(true);
+    expect(canCreateUser(admin, "EMPLOYEE")).toBe(true);
+    expect(canCreateUser(manager, "MANAGER")).toBe(true);
+    expect(canCreateUser(manager, "ADMIN")).toBe(false);
+    expect(canCreateUser(staff, "EMPLOYEE")).toBe(false);
+    expect(canCreateUser(employee, "EMPLOYEE")).toBe(false);
+  });
+
+  it("lets IT staff write knowledge base articles but only managers and admins delete them", () => {
+    expect([employee, staff, manager, admin].map(canEditKb)).toEqual([false, true, true, true]);
+    expect([employee, staff, manager, admin].map(canDeleteKb)).toEqual([false, false, true, true]);
+  });
+
+  it("lets managers and admins edit a request until it is deleted", () => {
+    expect(canEditRequest(manager, { deletedAt: null })).toBe(true);
+    expect(canEditRequest(admin, { deletedAt: null })).toBe(true);
+    expect(canEditRequest(manager, { deletedAt: new Date() })).toBe(false);
+    expect(canEditRequest(staff, { deletedAt: null })).toBe(false);
+    expect(canEditRequest(employee, { deletedAt: null })).toBe(false);
+  });
+
+  it("lets a manager open any request from system management, but not comment on it", () => {
+    const someoneElses = { requesterId: "u-x", status: "IN_PROGRESS" as const };
+    expect(canViewRequest(manager, someoneElses)).toBe(true);
+    expect(canComment(manager, someoneElses)).toBe(false);
+    const chosen = { requesterId: "u-x", approverId: manager.id, status: "PENDING_APPROVAL" as const };
+    expect(canComment(manager, chosen)).toBe(true);
   });
 });

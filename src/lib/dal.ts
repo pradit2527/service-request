@@ -8,7 +8,7 @@ import { redirect } from "next/navigation";
 import { db } from "./db";
 import { SESSION_COOKIE, verifySessionToken } from "./jwt";
 import type { Role } from "./labels";
-import { isAdmin, isStaff } from "./permissions";
+import { canEditKb, canManageSystem, isAdmin, isStaff } from "./permissions";
 
 export type CurrentUser = {
   id: string;
@@ -46,5 +46,19 @@ export async function requireStaff(): Promise<CurrentUser> {
 export async function requireAdmin(): Promise<CurrentUser> {
   const user = await requireUser();
   if (!isAdmin(user)) redirect("/");
+  return user;
+}
+
+/** Administrators and managers: the people who use the system management menu. */
+export async function requireSystemManager(): Promise<CurrentUser> {
+  const user = await requireUser();
+  if (!canManageSystem(user)) redirect("/");
+  return user;
+}
+
+/** Who may write knowledge base articles: IT staff, administrators and managers. */
+export async function requireKbEditor(): Promise<CurrentUser> {
+  const user = await requireUser();
+  if (!canEditKb(user)) redirect("/");
   return user;
 }

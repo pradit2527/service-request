@@ -31,8 +31,13 @@ export function isApproverOf(viewer: Viewer, request: Pick<RequestRef, "approver
   return !!request.approverId && request.approverId === viewer.id;
 }
 
+/** System management (users, requests, knowledge base) is open to administrators and managers. */
+export function canManageSystem(viewer: Viewer): boolean {
+  return viewer.role === "ADMIN" || viewer.role === "MANAGER";
+}
+
 export function canViewRequest(viewer: Viewer, request: Pick<RequestRef, "requesterId" | "approverId">): boolean {
-  return isStaff(viewer) || request.requesterId === viewer.id || isApproverOf(viewer, request);
+  return isStaff(viewer) || canManageSystem(viewer) || request.requesterId === viewer.id || isApproverOf(viewer, request);
 }
 
 export function canCancelRequest(viewer: Viewer, request: RequestRef): boolean {
@@ -40,9 +45,10 @@ export function canCancelRequest(viewer: Viewer, request: RequestRef): boolean {
 }
 
 export function canComment(viewer: Viewer, request: RequestRef): boolean {
-  if (!canViewRequest(viewer, request)) return false;
   if (isStaff(viewer)) return true;
-  return !isClosed(request.status);
+  // Opening a request from system management does not make a manager a participant in it.
+  const involved = request.requesterId === viewer.id || isApproverOf(viewer, request);
+  return involved && !isClosed(request.status);
 }
 
 export function canPostInternalNote(viewer: Viewer): boolean {
@@ -61,6 +67,48 @@ export function canDecideAsManager(viewer: Viewer, request: RequestRef): boolean
     request.status === "PENDING_APPROVAL" &&
     request.requesterId !== viewer.id
   );
+}
+
+export type UserTarget = { id: string; role: Role; isActive: boolean };
+/** The new role and active flag for a user (profile-only edits pass the current ones), or a deletion. */
+export type UserEdit = { role: Role; isActive: boolean } | { delete: true };
+export type ModifyUserResult =
+  | { ok: true }
+  | { ok: false; reason: "not-allowed" | "admin-protected" | "admin-grant" | "self" };
+
+/**
+ * Whether `actor` may apply `edit` to the `target` user. Managers cannot touch administrator accounts or
+ * make anyone an administrator, and nobody can change their own role or status or delete themselves, so
+ * the last administrator can never be removed.
+ */
+export function canModifyUser(actor: Viewer, target: UserTarget, edit: UserEdit): ModifyUserResult {
+  if (!canManageSystem(actor)) return { ok: false, reason: "not-allowed" };
+  if (!isAdmin(actor)) {
+    if (target.role === "ADMIN") return { ok: false, reason: "admin-protected" };
+    if ("role" in edit && edit.role === "ADMIN") return { ok: false, reason: "admin-grant" };
+  }
+  if (actor.id === target.id) {
+    const changesSelf = "delete" in edit || edit.role !== target.role || edit.isActive !== target.isActive;
+    if (changesSelf) return { ok: false, reason: "self" };
+  }
+  return { ok: true };
+}
+
+export function canCreateUser(actor: Viewer, role: Role): boolean {
+  return canManageSystem(actor) && (role !== "ADMIN" || isAdmin(actor));
+}
+
+/** IT staff write knowledge base articles; managers and administrators can too, from system management. */
+export function canEditKb(viewer: Viewer): boolean {
+  return isStaff(viewer) || canManageSystem(viewer);
+}
+
+export function canDeleteKb(viewer: Viewer): boolean {
+  return canManageSystem(viewer);
+}
+
+export function canEditRequest(viewer: Viewer, request: { deletedAt: Date | null }): boolean {
+  return canManageSystem(viewer) && request.deletedAt === null;
 }
 
 /**
