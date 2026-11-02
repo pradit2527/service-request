@@ -5,6 +5,7 @@
 // not Incidents (something is broken).
 
 import { l, makeT, type Lang, type Localized } from "@/lib/i18n";
+import { AI_DEFS } from "@/lib/request-type-defs/ai";
 import { DATA_REPORTING_DEFS } from "@/lib/request-type-defs/data-reporting";
 import { DEPLOYMENT_TRAINING_DEFS } from "@/lib/request-type-defs/deployment-training";
 import { DEVOPS_SECURITY_DEFS } from "@/lib/request-type-defs/devops-security";
@@ -39,6 +40,11 @@ export const REQUEST_TYPES = [
   "SECURITY_REVIEW",
   "ONBOARDING",
   "OFFBOARDING",
+  "SPARK_AI",
+  "GPU_5090",
+  "CLAUDE_AI",
+  "GEMINI_AI",
+  "OTHER_AI",
 ] as const;
 
 export type RequestType = (typeof REQUEST_TYPES)[number];
@@ -187,6 +193,17 @@ export const REQUEST_CATEGORIES = [
     ),
     audience: ["internal"],
     types: ["ONBOARDING", "OFFBOARDING"],
+  },
+  {
+    key: "ai",
+    label: l("AI & GPU", "AI & GPU", "AI & GPU"),
+    description: l(
+      "ขอใช้เครื่อง Spark AI / Nvidia 5090 และขอใช้งาน Claude, Gemini หรือ AI ตัวอื่นๆ",
+      "ຂໍໃຊ້ເຄື່ອງ Spark AI / Nvidia 5090 ແລະ ຂໍໃຊ້ງານ Claude, Gemini ຫຼື AI ຕົວອື່ນໆ",
+      "Time on the Spark AI / Nvidia 5090 machines, and access to Claude, Gemini or other AI tools",
+    ),
+    audience: ["internal"],
+    types: ["SPARK_AI", "GPU_5090", "CLAUDE_AI", "GEMINI_AI", "OTHER_AI"],
   },
   {
     key: "other",
@@ -979,6 +996,7 @@ export const REQUEST_TYPE_DEFS: Record<RequestType, RequestTypeDef> = {
   ...INFRASTRUCTURE_DEFS,
   ...DEVOPS_SECURITY_DEFS,
   ...PEOPLE_DEFS,
+  ...AI_DEFS,
 };
 
 export function isRequestType(value: unknown): value is RequestType {

@@ -47,6 +47,11 @@ enum RequestType {
   SECURITY_REVIEW
   ONBOARDING
   OFFBOARDING
+  SPARK_AI
+  GPU_5090
+  CLAUDE_AI
+  GEMINI_AI
+  OTHER_AI
 }
 
 enum RequestStatus {

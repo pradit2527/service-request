@@ -197,6 +197,12 @@ describe("classifyTier", () => {
     expect(classifyTier("OFFBOARDING", {})).toBe("STANDARD");
   });
 
+  it("gives the AI machines and AI services planned time", () => {
+    for (const type of ["SPARK_AI", "GPU_5090", "CLAUDE_AI", "GEMINI_AI", "OTHER_AI"] as const) {
+      expect(classifyTier(type, {})).toBe("PROVISIONING");
+    }
+  });
+
   it("classifies the other new types", () => {
     expect(classifyTier("DOCUMENT", {})).toBe("STANDARD");
     for (const type of ["DATA_EXTRACT", "DATA_CORRECTION", "BULK_IMPORT", "REPORT_TEMPLATE", "SYSTEM_CONFIG", "FIREWALL", "RESOURCE_UPGRADE"] as const) {

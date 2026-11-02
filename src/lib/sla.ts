@@ -126,6 +126,11 @@ export function classifyTier(type: RequestType, details: Record<string, unknown>
     case "FIREWALL":
     case "RESOURCE_UPGRADE":
     case "API_CREDENTIAL":
+    case "SPARK_AI":
+    case "GPU_5090":
+    case "CLAUDE_AI":
+    case "GEMINI_AI":
+    case "OTHER_AI":
     case "OTHER":
       return "PROVISIONING";
   }

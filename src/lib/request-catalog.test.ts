@@ -26,6 +26,7 @@ describe("catalog: categories and audiences", () => {
     expect(audienceOf("other")).toEqual(["client", "internal"]);
     expect(audienceOf("security")).toEqual(["internal"]);
     expect(audienceOf("people")).toEqual(["internal"]);
+    expect(audienceOf("ai")).toEqual(["internal"]);
   });
 
   it("puts the new types in the categories that match the catalog", () => {
@@ -42,6 +43,7 @@ describe("catalog: categories and audiences", () => {
     expect(categoryOf("SECURITY_REVIEW").key).toBe("security");
     expect(categoryOf("ONBOARDING").key).toBe("people");
     expect(categoryOf("OFFBOARDING").key).toBe("people");
+    for (const type of ["SPARK_AI", "GPU_5090", "CLAUDE_AI", "GEMINI_AI", "OTHER_AI"] as const) expect(categoryOf(type).key).toBe("ai");
   });
 });
 
@@ -64,11 +66,16 @@ describe("new request types", () => {
     "SECURITY_REVIEW",
     "ONBOARDING",
     "OFFBOARDING",
+    "SPARK_AI",
+    "GPU_5090",
+    "CLAUDE_AI",
+    "GEMINI_AI",
+    "OTHER_AI",
   ] as const;
 
   it("are recognised as request types", () => {
     for (const type of NEW_TYPES) expect(isRequestType(type)).toBe(true);
-    expect(REQUEST_TYPES).toHaveLength(26);
+    expect(REQUEST_TYPES).toHaveLength(31);
   });
 
   it("ask for every required field when the form is empty, in every language", () => {
@@ -196,6 +203,46 @@ describe("DevOps, security and people request types", () => {
   it("describe the stored details in every language", () => {
     const details = { action: "delete", provider: "azure", resourceKind: "vm", resourceName: "vm-1", project: "Shop", environment: "prod", backedUp: "yes" };
     for (const lang of LANGS) expect(describeDetails("CLOUD_RESOURCE", details, lang)).toHaveLength(7);
+  });
+});
+
+describe("AI and GPU request types", () => {
+  it("ask what the GPU machine is for, how it is used and for how long", () => {
+    const base = { purpose: "Fine-tune a model for Project X", workload: "fine-tuning", accessMode: "remote", startDate: "2026-12-01", endDate: "2026-12-31" };
+    for (const type of ["SPARK_AI", "GPU_5090"] as const) {
+      expect(validateDetails(type, base, "th").errors).toEqual({});
+      expect(validateDetails(type, { ...base, resources: "VRAM 24 GB, 8 h/day" }, "th").values).toHaveProperty("resources");
+      expect(Object.keys(validateDetails(type, { ...base, workload: "mining", endDate: "" }, "th").errors).sort()).toEqual(["endDate", "workload"]);
+    }
+  });
+
+  it("offer a different way of using each AI service", () => {
+    const base = { project: "Shop", dataLevel: "internal", duration: "permanent" };
+    expect(validateDetails("CLAUDE_AI", { ...base, accessKind: "code" }, "th").errors).toEqual({});
+    expect(validateDetails("GEMINI_AI", { ...base, accessKind: "code" }, "th").errors.accessKind).toBeDefined();
+    expect(validateDetails("GEMINI_AI", { ...base, accessKind: "vertex" }, "th").errors).toEqual({});
+    expect(validateDetails("CLAUDE_AI", { ...base, accessKind: "vertex" }, "th").errors.accessKind).toBeDefined();
+  });
+
+  it("ask for the tool name only when the AI service is another one", () => {
+    const names = (type: "CLAUDE_AI" | "GEMINI_AI" | "OTHER_AI") => REQUEST_TYPE_DEFS[type].fields.map((f) => f.name);
+    expect(names("CLAUDE_AI")).not.toContain("toolName");
+    expect(names("GEMINI_AI")).not.toContain("toolName");
+    const base = { accessKind: "api", project: "Shop", dataLevel: "none", duration: "permanent" };
+    expect(Object.keys(validateDetails("OTHER_AI", base, "th").errors)).toEqual(["toolName"]);
+    expect(validateDetails("OTHER_AI", { ...base, toolName: "Mistral Le Chat" }, "th").errors).toEqual({});
+  });
+
+  it("ask for an end date only when the AI access is temporary", () => {
+    const base = { accessKind: "app", project: "Shop", dataLevel: "customer" };
+    expect(Object.keys(validateDetails("CLAUDE_AI", { ...base, duration: "temporary" }, "th").errors)).toEqual(["expiresOn"]);
+    expect(validateDetails("CLAUDE_AI", { ...base, duration: "temporary", expiresOn: "2026-12-31" }, "th").errors).toEqual({});
+    expect(validateDetails("CLAUDE_AI", { ...base, duration: "permanent", expiresOn: "2026-12-31" }, "th").values).not.toHaveProperty("expiresOn");
+  });
+
+  it("describe the stored details in every language", () => {
+    const details = { purpose: "Train", workload: "training", accessMode: "onsite", startDate: "2026-12-01", endDate: "2026-12-31" };
+    for (const lang of LANGS) expect(describeDetails("SPARK_AI", details, lang)).toHaveLength(5);
   });
 });
 
