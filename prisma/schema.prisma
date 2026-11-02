@@ -78,6 +78,9 @@ enum EventAction {
   ASSIGNED
   SLA_CHANGED
   APPROVER_CHANGED
+  EDITED
+  DELETED
+  RESTORED
 }
 
 model User {
@@ -98,9 +101,11 @@ model User {
   assignedRequests ServiceRequest[] @relation("Assignee")
   decidedRequests  ServiceRequest[] @relation("Decider")
   approvalRequests ServiceRequest[] @relation("Approver")
+  deletedRequests  ServiceRequest[] @relation("Deleter")
   comments         RequestComment[]
   events           RequestEvent[]
   articles         KbArticle[]
+  auditLogs        AuditLog[]
 
   @@index([role, isActive])
   @@map("tbl_users")
@@ -131,6 +136,9 @@ model ServiceRequest {
   closedAt          DateTime? @map("closed_at")
   createdAt         DateTime  @default(now()) @map("created_at")
   updatedAt         DateTime  @updatedAt @map("updated_at")
+  // Soft delete: a deleted request is hidden everywhere except in system management, where it can be restored.
+  deletedAt         DateTime? @map("deleted_at")
+  deletedById       String?   @map("deleted_by_id")
 
   // SLA. Due dates are null for requests created before SLA tracking.
   slaTier          SlaTier   @default(PROVISIONING) @map("sla_tier")
@@ -145,10 +153,12 @@ model ServiceRequest {
   assignee  User? @relation("Assignee", fields: [assigneeId], references: [id], onDelete: SetNull)
   approver  User? @relation("Approver", fields: [approverId], references: [id], onDelete: SetNull)
   decidedBy User? @relation("Decider", fields: [decidedById], references: [id], onDelete: SetNull)
+  deletedBy User? @relation("Deleter", fields: [deletedById], references: [id], onDelete: Restrict)
 
   comments RequestComment[]
   events   RequestEvent[]
 
+  @@index([deletedAt])
   @@index([status, createdAt])
   @@index([status, fulfillmentDueAt])
   @@index([requesterId, createdAt])
@@ -196,6 +206,24 @@ model Counter {
   value Int    @default(0)
 
   @@map("tbl_counters")
+}
+
+// Who changed users and knowledge base articles (request changes live in RequestEvent).
+// `summary` is a snapshot, because the entity may have been deleted since.
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String   @map("actor_id")
+  action    String
+  entity    String
+  entityId  String   @map("entity_id")
+  summary   String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  actor User @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([createdAt])
+  @@index([entity, entityId])
+  @@map("tbl_audit_logs")
 }
 
 // Knowledge base article written by the IT team, searchable from the portal home page.

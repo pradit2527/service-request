@@ -1,4 +1,4 @@
-import { ArrowRightLeft, FilePlus2, Gauge, ShieldCheck, UserCheck, UserCog, type LucideIcon } from "lucide-react";
+import { ArrowRightLeft, FilePlus2, Gauge, Pencil, ShieldCheck, Trash2, Undo2, UserCheck, UserCog, type LucideIcon } from "lucide-react";
 import type { Translate } from "@/lib/i18n";
 import { getI18n } from "@/lib/i18n-server";
 import { ROLE_LABEL, formatDateTime } from "@/lib/labels";
@@ -75,6 +75,20 @@ function describeEvent(event: Event, t: Translate): { text: string; icon: Lucide
         icon: UserCog,
         tone: "bg-slate-200 text-slate-600",
       };
+    case "EDITED":
+      return {
+        text: t(
+          `แก้ไขข้อมูลคำขอ (${event.toValue ?? "-"})`,
+          `ແກ້ໄຂຂໍ້ມູນຄຳຂໍ (${event.toValue ?? "-"})`,
+          `edited the request (${event.toValue ?? "-"})`,
+        ),
+        icon: Pencil,
+        tone: "bg-slate-200 text-slate-600",
+      };
+    case "DELETED":
+      return { text: t("ลบคำขอ", "ລຶບຄຳຂໍ", "deleted the request"), icon: Trash2, tone: "bg-red-100 text-red-600" };
+    case "RESTORED":
+      return { text: t("กู้คืนคำขอ", "ກູ້ຄືນຄຳຂໍ", "restored the request"), icon: Undo2, tone: "bg-emerald-100 text-emerald-600" };
   }
 }
 
