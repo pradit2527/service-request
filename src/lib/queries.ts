@@ -362,3 +362,16 @@ export async function listArticlesForAdmin(filters: { q?: string; page?: number 
   const items = await db.kbArticle.findMany({ where, select: articleSelect, orderBy: { updatedAt: "desc" }, skip, take: PAGE_SIZE });
   return { items, total, page, pageCount };
 }
+
+/** The change log of users and knowledge base articles, newest first. */
+export async function listAuditLogs(requestedPage: number) {
+  const total = await db.auditLog.count();
+  const { page, pageCount, skip } = paginate(total, requestedPage, PAGE_SIZE);
+  const rows = await db.auditLog.findMany({
+    select: { id: true, action: true, entity: true, summary: true, createdAt: true, actor: { select: { name: true } } },
+    orderBy: { createdAt: "desc" },
+    skip,
+    take: PAGE_SIZE,
+  });
+  return { items: rows, total, page, pageCount };
+}
