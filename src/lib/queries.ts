@@ -8,14 +8,13 @@ import { isKbCategory } from "./kb";
 import type { Role } from "./labels";
 import { paginate } from "./pagination";
 import { canEditKb, canManageSystem, canViewRequest, isStaff, type Viewer } from "./permissions";
+import { OPEN_STATUSES, breachedWhere } from "./request-where";
 import type { RequestType } from "./request-types";
 import { evaluateSla, startOfMonthBangkok, tally, type PassRate, type SlaSubject } from "./sla";
 import { getSlaCalendar } from "./sla-calendar";
-import { CLOSED_STATUSES, REQUEST_STATUSES, type RequestStatus } from "./status";
+import { REQUEST_STATUSES, type RequestStatus } from "./status";
 
 export const PAGE_SIZE = 14;
-
-export const OPEN_STATUSES: RequestStatus[] = REQUEST_STATUSES.filter((s) => !CLOSED_STATUSES.includes(s));
 
 const rowSelect = {
   id: true,
@@ -53,15 +52,6 @@ export type ListFilters = {
   /** With `console`: also show deleted requests ("include") or only those ("only"). Ignored otherwise. */
   deleted?: "include" | "only";
 };
-
-/** Requests whose response or fulfillment deadline has passed while the clock was running. */
-function breachedWhere(now: Date): Prisma.ServiceRequestWhereInput {
-  return {
-    status: { in: OPEN_STATUSES },
-    slaPausedAt: null,
-    OR: [{ fulfillmentDueAt: { lt: now } }, { AND: [{ firstResponseAt: null }, { responseDueAt: { lt: now } }] }],
-  };
-}
 
 export async function listRequests(viewer: Viewer, filters: ListFilters) {
   const staff = isStaff(viewer);
