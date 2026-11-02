@@ -144,7 +144,8 @@ export function DataTable<T>({
                 {metas.map((column) => (
                   <div key={column.key} className="min-w-0">
                     <dt className="text-xs text-slate-500">{column.header}</dt>
-                    <dd className="mt-0.5 break-words text-slate-800">{column.render(row)}</dd>
+                    {/* A badge (status, decision) is nowrap in a table; in a half-width card cell it wraps instead of reaching past the screen. */}
+                    <dd className="mt-0.5 break-words text-slate-800 [&_span.whitespace-nowrap]:whitespace-normal">{column.render(row)}</dd>
                   </div>
                 ))}
               </dl>
