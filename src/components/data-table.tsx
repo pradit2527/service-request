@@ -15,9 +15,8 @@ export type Column<T> = {
   /** On a small screen (cards): "title" goes first, "meta" becomes a label and value, "hidden" is left out. */
   card?: "title" | "meta" | "hidden";
   /**
-   * In the table, show this column only when the table is at least this wide (900, 1100 or 1450 px; the page is never
-   * wider than about 1470), so it always fits without sideways scrolling, whatever the screen or the sidebar.
-   * Without it the column is always shown.
+   * In the table, show this column only when the table is at least this wide (900, 1100 or 1450 px), so it always
+   * fits without sideways scrolling, whatever the screen or the sidebar. Without it the column is always shown.
    */
   showFrom?: "wide" | "wider" | "widest";
 };
