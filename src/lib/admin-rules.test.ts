@@ -6,6 +6,7 @@ import {
   approverFormValue,
   changedFields,
   profileNameOnSignIn,
+  signInAccess,
   userDeletionBlockers,
   type UserReferenceCounts,
 } from "./admin-rules";
@@ -97,5 +98,28 @@ describe("labels", () => {
     for (const label of all) {
       for (const lang of LANGS) expect(label[lang].trim()).not.toBe("");
     }
+  });
+});
+
+describe("signInAccess", () => {
+  const registered = { isActive: true, googleSub: null };
+
+  it("lets a registered user in from any email domain, such as Gmail", () => {
+    expect(signInAccess({ domainAllowed: false, existing: registered, sub: "g1" })).toBe("ok");
+  });
+
+  it("creates an unregistered user only when the email is in a company domain", () => {
+    expect(signInAccess({ domainAllowed: true, existing: null, sub: "g1" })).toBe("ok");
+    expect(signInAccess({ domainAllowed: false, existing: null, sub: "g1" })).toBe("domain");
+  });
+
+  it("refuses a deactivated user, even from a company domain", () => {
+    expect(signInAccess({ domainAllowed: true, existing: { isActive: false, googleSub: "g1" }, sub: "g1" })).toBe("inactive");
+    expect(signInAccess({ domainAllowed: false, existing: { isActive: false, googleSub: null }, sub: "g1" })).toBe("inactive");
+  });
+
+  it("refuses an email that is already linked to a different Google account", () => {
+    expect(signInAccess({ domainAllowed: false, existing: { isActive: true, googleSub: "g1" }, sub: "g2" })).toBe("conflict");
+    expect(signInAccess({ domainAllowed: false, existing: { isActive: true, googleSub: "g1" }, sub: "g1" })).toBe("ok");
   });
 });

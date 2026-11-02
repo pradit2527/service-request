@@ -324,17 +324,24 @@ ALTER DATABASE "service-request_db" OWNER TO aidc_app;
 
 สำหรับเซิร์ฟเวอร์ PostgreSQL ปกติ `DIRECT_URL` ใช้ค่าเดียวกับ `DATABASE_URL` ทั้งสองค่าต่างกันเฉพาะเมื่ออยู่หลัง connection pooler เช่น **Supabase**: `DATABASE_URL` = Transaction pooler (พอร์ต 6543) ต่อท้ายด้วย `?pgbouncer=true&connection_limit=1` ส่วน `DIRECT_URL` = Direct connection (พอร์ต 5432) ที่ใช้กับ `prisma migrate` (Supabase ใช้ชื่อ database `postgres` ตามที่ผู้ให้บริการกำหนด)
 
-### 2) Google Workspace SSO
+### 2) เข้าสู่ระบบด้วย Google (Gmail และ Google Workspace)
 
-1. Google Cloud Console → **APIs & Services → Credentials → Create credentials → OAuth client ID** ชนิด *Web application*
-2. **Authorized redirect URI:** `{APP_URL}/api/auth/google/callback` (เช่น `http://localhost:3000/api/auth/google/callback` และ URL จริงตอน deploy)
-3. ใส่ `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` ใน `.env`
-4. `ALLOWED_EMAIL_DOMAINS` = โดเมนอีเมลบริษัท (คั่นด้วยจุลภาคได้) **ถ้าเว้นว่างจะไม่มีใครเข้าระบบได้**
-5. ระบบตรวจ ID token ของ Google ครบ (ลายเซ็น, issuer, audience, nonce, `email_verified`) ใช้ PKCE และ state และถ้าบัญชีมี `hd` (Workspace) ต้องตรงกับโดเมนที่อนุญาต
+หน้า login มีปุ่ม "เข้าสู่ระบบด้วย Google" ปุ่มเดียว กดแล้วระบบผูกบัญชี Google กับอีเมลของผู้ใช้ให้เองตอนเข้าครั้งแรก ตั้งค่าครั้งเดียวดังนี้
+
+1. Google Cloud Console → **APIs & Services → OAuth consent screen** เลือก User type **External** ใส่ชื่อแอปและอีเมลติดต่อ แล้วกด **Publish app** (สถานะ *In production*) ถ้าไม่ publish จะมีเฉพาะ Test users (สูงสุด 100 คน) ที่เข้าได้ scope ที่ใช้คือ `openid email profile` ซึ่งไม่ต้องรอ Google ตรวจแอป
+2. **Credentials → Create credentials → OAuth client ID** ชนิด *Web application*
+3. **Authorized redirect URI:** `{APP_URL}/api/auth/google/callback` (เช่น `http://localhost:3000/api/auth/google/callback` และ URL จริงตอน deploy)
+4. ใส่ `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` ใน `.env` แล้วรีสตาร์ทเซิร์ฟเวอร์ (ปุ่ม Google จะโผล่ในหน้า login)
+5. **ใครเข้าได้บ้าง**
+   - อีเมลที่ **ผู้ดูแลระบบลงทะเบียนไว้ที่ `/admin/users`** ใช้ได้ทุกโดเมนรวมถึง Gmail (แนะนำ: ลงทะเบียนอีเมลของพนักงานครั้งเดียว แล้วพนักงานกดปุ่ม Google ปุ่มเดียวก็เข้าได้) คนนอกที่มี Gmail แต่ไม่ได้ลงทะเบียนเข้าไม่ได้
+   - อีเมลในโดเมนที่อยู่ใน `ALLOWED_EMAIL_DOMAINS` (คั่นด้วยจุลภาคได้) ได้บัญชีพนักงานอัตโนมัติตอนเข้าครั้งแรก ถ้าเป็นบัญชี Workspace โดเมน (`hd`) ต้องอยู่ในรายการนี้ด้วย ถ้าเว้นว่าง ก็ยังเข้าได้เฉพาะผู้ที่ลงทะเบียนไว้
+   - อีเมลใน `ADMIN_EMAILS` / `IT_STAFF_EMAILS` (ใช้ Gmail ได้) ได้บัญชีพร้อมสิทธิ์ตั้งแต่เข้าครั้งแรก
+   - บัญชีที่ปิดใช้งานเข้าไม่ได้ และอีเมลที่ผูกกับบัญชี Google อื่นแล้วจะถูกปฏิเสธ (มีเทสต์ของกฎนี้ใน `signInAccess` ที่ [`src/lib/admin-rules.ts`](src/lib/admin-rules.ts))
+6. ระบบตรวจ ID token ของ Google ครบ (ลายเซ็น, issuer, audience, nonce, `email_verified`) และใช้ PKCE กับ state
 
 ### 3) ผู้ดูแลระบบ ทีม IT และผู้อนุมัติ
 
-1. ใส่อีเมลของคุณใน `ADMIN_EMAILS` เมื่อเข้าสู่ระบบด้วย Google จะได้สิทธิ์ผู้ดูแลระบบ (ผู้ใช้ทั่วไปถูกสร้างอัตโนมัติเป็น *พนักงาน*)
+1. ใส่อีเมลของคุณ (Gmail ก็ได้) ใน `ADMIN_EMAILS` เมื่อเข้าสู่ระบบด้วย Google จะได้สิทธิ์ผู้ดูแลระบบ (ผู้ใช้ที่เข้าได้ด้วยโดเมนบริษัทถูกสร้างอัตโนมัติเป็น *พนักงาน*)
 2. กำหนดทีม IT ที่ `/admin/users` หรือใส่อีเมลใน `IT_STAFF_EMAILS` เพื่อให้ได้สิทธิ์ตั้งแต่เข้าครั้งแรก
 3. **ตั้งบทบาท "หัวหน้างาน · ผู้อนุมัติ" ให้หัวหน้าที่ `/admin/users`** ไม่เช่นนั้นพนักงานจะยื่นคำขอประเภทที่ต้องอนุมัติไม่ได้ (ระบบแจ้งเตือนในฟอร์ม) หัวหน้าหนึ่งคนมีบทบาทเดียว จึงเป็นทีม IT ไปพร้อมกันไม่ได้
 4. (ไม่บังคับ) ใส่ `SLA_HOLIDAYS` และเขียนบทความแรกในฐานความรู้

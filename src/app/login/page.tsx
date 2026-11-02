@@ -68,9 +68,9 @@ export default async function LoginPage({
       "Google sign-in failed. Please try again.",
     ),
     domain: t(
-      "อีเมลนี้ไม่อยู่ในโดเมนของบริษัท กรุณาใช้บัญชี Google Workspace ของ AIDC Tech",
-      "ອີເມວນີ້ບໍ່ຢູ່ໃນ Domain ຂອງບໍລິສັດ ກະລຸນາໃຊ້ບັນຊີ Google Workspace ຂອງ AIDC Tech",
-      "This email is not in the company domain. Please use your AIDC Tech Google Workspace account.",
+      "อีเมลนี้ยังไม่ได้ลงทะเบียน กรุณาติดต่อผู้ดูแลระบบเพื่อเพิ่มอีเมลของคุณ แล้วลองเข้าสู่ระบบอีกครั้ง",
+      "ອີເມວນີ້ຍັງບໍ່ໄດ້ລົງທະບຽນ ກະລຸນາຕິດຕໍ່ຜູ້ດູແລລະບົບເພື່ອເພີ່ມອີເມວຂອງທ່ານ ແລ້ວລອງເຂົ້າສູ່ລະບົບອີກຄັ້ງ",
+      "This email is not registered yet. Ask the administrator to add it, then try again.",
     ),
     inactive: t(
       "บัญชีนี้ถูกปิดการใช้งาน กรุณาติดต่อทีม IT",
@@ -202,9 +202,9 @@ export default async function LoginPage({
           <h2 className="text-2xl font-semibold tracking-tight text-slate-900">{t("เข้าสู่ระบบ", "ເຂົ້າສູ່ລະບົບ", "Sign in")}</h2>
           <p className="mt-1 text-sm text-slate-500">
             {t(
-              "ใช้บัญชี Google Workspace ของบริษัทเพื่อเริ่มต้นใช้งาน",
-              "ໃຊ້ບັນຊີ Google Workspace ຂອງບໍລິສັດເພື່ອເລີ່ມຕົ້ນໃຊ້ງານ",
-              "Use your company Google Workspace account to get started",
+              "ใช้บัญชี Google (Gmail หรืออีเมลบริษัท) กดปุ่มเดียวก็เข้าใช้งานได้",
+              "ໃຊ້ບັນຊີ Google (Gmail ຫຼື ອີເມວບໍລິສັດ) ກົດປຸ່ມດຽວກໍເຂົ້າໃຊ້ງານໄດ້",
+              "Use your Google account (Gmail or company email). One click and you're in.",
             )}
           </p>
 
@@ -232,16 +232,24 @@ export default async function LoginPage({
                 className="flex w-full items-center justify-center gap-3 rounded-xl bg-white px-4 py-3 text-sm font-medium text-slate-700 shadow-card ring-1 ring-slate-200 transition hover:bg-slate-50 hover:shadow-lift active:scale-[0.99]"
               >
                 <GoogleLogo />
-                {t("เข้าสู่ระบบด้วย Google Workspace", "ເຂົ້າສູ່ລະບົບດ້ວຍ Google Workspace", "Sign in with Google Workspace")}
+                {t("เข้าสู่ระบบด้วย Google", "ເຂົ້າສູ່ລະບົບດ້ວຍ Google", "Sign in with Google")}
               </a>
-            ) : (
+            ) : process.env.NODE_ENV !== "production" ? (
               <p className="rounded-xl bg-amber-50 px-3.5 py-3 text-sm text-amber-800 ring-1 ring-amber-200 ring-inset">
                 {t("ยังไม่ได้ตั้งค่า", "ຍັງບໍ່ໄດ້ຕັ້ງຄ່າ", "Not yet set:")} <code className="font-mono text-xs">GOOGLE_CLIENT_ID</code>{" "}
                 {t("และ", "ແລະ", "and")} <code className="font-mono text-xs">GOOGLE_CLIENT_SECRET</code>{" "}
                 {t("ในไฟล์ .env", "ໃນໄຟລ໌ .env", "in the .env file")}
               </p>
+            ) : (
+              <p className="rounded-xl bg-amber-50 px-3.5 py-3 text-sm text-amber-800 ring-1 ring-amber-200 ring-inset">{ERRORS.config}</p>
             )}
-            <p className="text-center text-xs text-slate-500">{t("ใช้อีเมลบริษัทเท่านั้น", "ໃຊ້ອີເມວບໍລິສັດເທົ່ານັ້ນ", "Company email only")}</p>
+            <p className="text-center text-xs leading-relaxed text-slate-500">
+              {t(
+                "ครั้งแรกระบบจะผูกอีเมลของคุณให้เอง ถ้าเข้าไม่ได้ ให้ผู้ดูแลระบบลงทะเบียนอีเมลของคุณก่อน",
+                "ຄັ້ງທຳອິດລະບົບຈະຜູກອີເມວຂອງທ່ານໃຫ້ເອງ ຖ້າເຂົ້າບໍ່ໄດ້ ໃຫ້ຜູ້ດູແລລະບົບລົງທະບຽນອີເມວຂອງທ່ານກ່ອນ",
+                "The first time, your email is linked automatically. If you can't get in, ask the administrator to register your email first.",
+              )}
+            </p>
           </div>
 
           {devUsers.length > 0 && (

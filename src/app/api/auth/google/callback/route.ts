@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { isAllowedEmail, appUrl } from "@/lib/env";
+import { isAllowedAccount, appUrl } from "@/lib/env";
 import { completeSignIn } from "@/lib/google";
 import { OAUTH_COOKIE, SESSION_COOKIE, signSession, verifyOAuthState } from "@/lib/jwt";
 import { sessionCookieOptions } from "@/lib/session";
@@ -30,9 +30,8 @@ export async function GET(request: NextRequest) {
     return fail("google");
   }
 
-  if (!isAllowedEmail(profile.email)) return fail("domain");
-
-  const result = await signInGoogleUser(profile);
+  // A registered user signs in from any domain; an unregistered one only when the account is allowed.
+  const result = await signInGoogleUser(profile, { domainAllowed: isAllowedAccount(profile.email, profile.hostedDomain) });
   if (!result.ok) return fail(result.reason);
 
   const response = redirectTo(saved.next);

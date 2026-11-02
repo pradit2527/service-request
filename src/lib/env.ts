@@ -48,10 +48,13 @@ export function isAllowedEmail(email: string): boolean {
 }
 
 /**
- * Whether an administrator may register `email` ahead of the person's first sign-in. It follows the sign-in
- * rule (company domains only); without a domain list it is open only while developing with dev login.
+ * Whether a verified Google account may be created on its first sign-in: its email is in a company domain (and, for a
+ * Google Workspace account, so is the Workspace domain `hd`), or ADMIN_EMAILS / IT_STAFF_EMAILS name it. Anyone else
+ * can sign in only after an administrator has registered their email, which is how a Gmail address gets in.
  */
-export function registrationEmailAllowed(email: string): boolean {
-  if (allowedEmailDomains().length === 0) return devLoginEnabled();
-  return isAllowedEmail(email);
+export function isAllowedAccount(email: string, hostedDomain: string | null): boolean {
+  const lower = email.toLowerCase();
+  if (adminEmails().includes(lower) || itStaffEmails().includes(lower)) return true;
+  if (!isAllowedEmail(lower)) return false;
+  return !hostedDomain || allowedEmailDomains().includes(hostedDomain.toLowerCase());
 }

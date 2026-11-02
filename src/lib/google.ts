@@ -4,7 +4,7 @@
 import "server-only";
 import { createHash, randomBytes } from "node:crypto";
 import { createRemoteJWKSet, jwtVerify } from "jose";
-import { allowedEmailDomains, appUrl, googleCredentials } from "./env";
+import { appUrl, googleCredentials } from "./env";
 
 const AUTH_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth";
 const TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
@@ -17,6 +17,8 @@ export type GoogleProfile = {
   email: string;
   name: string;
   picture: string | null;
+  /** The Google Workspace domain of the account (`hd`); null for a personal Gmail account. */
+  hostedDomain: string | null;
 };
 
 export function randomToken(bytes = 32): string {
@@ -41,9 +43,6 @@ export function buildAuthorizationUrl(params: { state: string; nonce: string; ve
   url.searchParams.set("code_challenge", pkceChallenge(params.verifier));
   url.searchParams.set("code_challenge_method", "S256");
   url.searchParams.set("prompt", "select_account");
-  // UX hint only (not a security control): preselect the company account when there is just one domain.
-  const domains = allowedEmailDomains();
-  if (domains.length === 1) url.searchParams.set("hd", domains[0]);
   return url.toString();
 }
 
@@ -79,9 +78,9 @@ export async function completeSignIn(params: { code: string; verifier: string; n
   if (payload.email_verified !== true) throw new Error("Email address is not verified");
   if (typeof payload.sub !== "string" || typeof payload.email !== "string") throw new Error("ID token is missing claims");
 
-  // Google Workspace accounts carry the hosted domain (`hd`); if present it must also be an allowed domain.
+  // Google Workspace accounts carry the hosted domain (`hd`). Whether it is allowed is decided by the caller (isAllowedAccount),
+  // because a registered user may sign in from any domain.
   const hostedDomain = typeof payload.hd === "string" ? payload.hd.toLowerCase() : null;
-  if (hostedDomain && !allowedEmailDomains().includes(hostedDomain)) throw new Error("Hosted domain is not allowed");
 
   const email = payload.email.toLowerCase();
   return {
@@ -89,5 +88,6 @@ export async function completeSignIn(params: { code: string; verifier: string; n
     email,
     name: typeof payload.name === "string" && payload.name ? payload.name : email,
     picture: typeof payload.picture === "string" ? payload.picture : null,
+    hostedDomain,
   };
 }

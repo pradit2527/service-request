@@ -75,6 +75,25 @@ export function approverFormValue(currentApproverId: string, choices: { id: stri
  * The display name to store when someone signs in with Google, or `undefined` to leave it as it is.
  * The Google name is used the first time only; after that the administrators own the name.
  */
+export type SignInAccess = "ok" | "domain" | "inactive" | "conflict";
+
+/**
+ * May this verified Google account sign in? A registered user may, from any email domain (a Gmail address that an
+ * administrator added, for example). An unregistered one may only when its email is allowed (`domainAllowed`), and
+ * then the account is created on the spot. A deactivated user, or an email linked to another Google account, may not.
+ */
+export function signInAccess(input: {
+  domainAllowed: boolean;
+  existing: { isActive: boolean; googleSub: string | null } | null;
+  sub: string;
+}): SignInAccess {
+  const { domainAllowed, existing, sub } = input;
+  if (!existing) return domainAllowed ? "ok" : "domain";
+  if (!existing.isActive) return "inactive";
+  if (existing.googleSub && existing.googleSub !== sub) return "conflict";
+  return "ok";
+}
+
 export function profileNameOnSignIn(existing: { googleSub: string | null } | null, googleName: string): string | undefined {
   return existing?.googleSub ? undefined : googleName;
 }

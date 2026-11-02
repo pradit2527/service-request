@@ -9,7 +9,6 @@ import { USER_REFERENCE_LABEL, changedFields, userDeletionBlockers, type UserRef
 import { writeAudit } from "@/lib/audit";
 import { requireSystemManager } from "@/lib/dal";
 import { db } from "@/lib/db";
-import { registrationEmailAllowed } from "@/lib/env";
 import type { Translate } from "@/lib/i18n";
 import { getI18n } from "@/lib/i18n-server";
 import { ROLES } from "@/lib/labels";
@@ -89,14 +88,8 @@ export async function createUser(_prev: ActionState, formData: FormData): Promis
   if (!parsed.success) return { error: checkInputMessage(t), fieldErrors: firstIssuePerField(parsed.error) };
   const { email, name, role, department, phone } = parsed.data;
 
+  // Any email address may be registered (a Gmail address too): being registered is what lets that person sign in.
   const fieldErrors: Record<string, string> = {};
-  if (!registrationEmailAllowed(email)) {
-    fieldErrors.email = t(
-      "ใช้ได้เฉพาะอีเมลของบริษัทที่อนุญาตให้เข้าสู่ระบบ",
-      "ໃຊ້ໄດ້ສະເພາະອີເມວຂອງບໍລິສັດທີ່ອະນຸຍາດໃຫ້ເຂົ້າສູ່ລະບົບ",
-      "Only company email addresses that may sign in can be registered",
-    );
-  }
   if (!canCreateUser(actor, role)) fieldErrors.role = refusalMessage("admin-grant", t);
   if (Object.keys(fieldErrors).length > 0) return { error: checkInputMessage(t), fieldErrors };
 
