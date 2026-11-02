@@ -3,11 +3,12 @@
 
 import "server-only";
 import type { Prisma } from "@prisma/client";
+import type { EditableRequest } from "@/components/request-edit-form";
 import { db } from "./db";
 import { paginate } from "./pagination";
 import type { Viewer } from "./permissions";
 import { PAGE_SIZE } from "./queries";
-import { requestReportScope, type RequestReportParams } from "./report-params";
+import { parseRequestReportParams, requestReportScope, type RequestReportParams } from "./report-params";
 import { approvalOutcome, type ApprovalOutcome } from "./report-summary";
 import { buildRequestReportWhere } from "./report-where";
 
@@ -72,4 +73,41 @@ export async function listRequestReport(viewer: Viewer, params: RequestReportPar
 
   const items: RequestReportRow[] = records.map(({ events, ...row }) => ({ ...row, outcome: approvalOutcome(row.status, events[0] ?? null) }));
   return { items, total, page, pageCount };
+}
+
+/**
+ * The request behind the edit pop-up of the report: only if it is inside the viewer's limit and not deleted.
+ * Null otherwise, so a made-up `edit=` in the address opens nothing.
+ */
+export async function getRequestReportRecord(viewer: Viewer, id: string) {
+  const scope = requestReportScope(viewer);
+  if (!scope) return null;
+
+  const record = await db.serviceRequest.findFirst({
+    where: { AND: [{ id }, buildRequestReportWhere(parseRequestReportParams({}, viewer), scope)] },
+    select: {
+      id: true,
+      requestNo: true,
+      title: true,
+      description: true,
+      priority: true,
+      neededBy: true,
+      requestedForName: true,
+      approverId: true,
+      status: true,
+      requesterId: true,
+    },
+  });
+  if (!record) return null;
+
+  const request: EditableRequest = {
+    id: record.id,
+    title: record.title,
+    description: record.description,
+    priority: record.priority,
+    neededBy: record.neededBy ? record.neededBy.toISOString().slice(0, 10) : "",
+    requestedForName: record.requestedForName ?? "",
+    approverId: record.approverId ?? "",
+  };
+  return { request, requestNo: record.requestNo, status: record.status, requesterId: record.requesterId };
 }

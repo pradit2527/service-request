@@ -1,11 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Plus } from "lucide-react";
+import { deleteRequest, restoreRequest } from "@/app/actions/admin-requests";
 import { Avatar } from "@/components/avatar";
 import { Badge, PriorityBadge, StatusBadge } from "@/components/badges";
+import { ConfirmActionButton } from "@/components/confirm-action-button";
 import { DataTable, type Column } from "@/components/data-table";
+import { Modal } from "@/components/modal";
 import { PaginationNav } from "@/components/pagination-nav";
 import { ReportToolbar } from "@/components/report-toolbar";
+import { RequestEditForm } from "@/components/request-edit-form";
 import { SlaChip } from "@/components/sla-chip";
 import { TypeIcon } from "@/components/type-icon";
 import { requireSystemManager } from "@/lib/dal";
@@ -14,10 +19,10 @@ import { PRIORITIES, PRIORITY_LABEL, formatDate } from "@/lib/labels";
 import { isAdmin } from "@/lib/permissions";
 import { listApprovers, listAssignableStaff } from "@/lib/queries";
 import { buildReportHref, parseRequestReportParams } from "@/lib/report-params";
-import { listRequestReport, type RequestReportRow } from "@/lib/report-queries";
+import { getRequestReportRecord, listRequestReport, type RequestReportRow } from "@/lib/report-queries";
 import { REQUEST_CATEGORIES, REQUEST_TYPE_DEFS } from "@/lib/request-types";
 import { CURRENT_STATUSES, STATUS_LABEL } from "@/lib/status";
-import { btnSecondary, inputClass, labelClass } from "@/lib/ui";
+import { btnPrimary, btnSecondary, inputClass, labelClass } from "@/lib/ui";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getI18n();
@@ -35,6 +40,10 @@ export default async function RequestReportPage({ searchParams }: { searchParams
   if (!report) redirect("/");
   const admin = isAdmin(user);
   const [staff, approvers] = await Promise.all([listAssignableStaff(), admin ? listApprovers("") : []]);
+
+  // The edit pop-up opens while "edit" is in the address, but only for a request inside this viewer's report.
+  const editing = params.edit ? await getRequestReportRecord(user, params.edit) : null;
+  const editApprovers = editing && editing.status === "PENDING_APPROVAL" ? await listApprovers(editing.requesterId) : [];
 
   const hasFilters = Boolean(
     params.q || params.status || params.type || params.priority || params.from || params.to || params.slaBreached || params.assignee || params.approver || params.result || params.deleted,
@@ -57,6 +66,8 @@ export default async function RequestReportPage({ searchParams }: { searchParams
     ...sorted,
   };
   const hrefFor = (overrides: Record<string, string | number | undefined>) => buildReportHref(PATH, { ...current, ...overrides });
+  // This same report without the pop-up: where closing, cancelling and saving lead back to.
+  const closeHref = hrefFor({});
 
   const outcomeBadge = (row: RequestReportRow) => {
     if (row.outcome.result === "approved") {
@@ -143,6 +154,12 @@ export default async function RequestReportPage({ searchParams }: { searchParams
         preserve={{ sort: sorted.sort, dir: sorted.dir }}
         hasFilters={hasFilters}
         clearHref={PATH}
+        actions={
+          <Link href="/requests/new" className={btnPrimary}>
+            <Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />
+            {t("เพิ่มคำขอ (ยื่นแทนผู้อื่น)", "ເພີ່ມຄຳຂໍ (ຍື່ນແທນຜູ້ອື່ນ)", "Add a request (for someone else)")}
+          </Link>
+        }
       >
         <div className={field}>
           <label htmlFor="f-status" className={labelClass}>
@@ -264,14 +281,54 @@ export default async function RequestReportPage({ searchParams }: { searchParams
         hrefForSort={(sortKey, dir) => hrefFor({ sort: sortKey, dir, page: 1 })}
         actionsHeader={t("จัดการ", "ຈັດການ", "Actions")}
         actions={(row) => (
-          <Link href={`/requests/${row.id}`} className={btnSecondary}>
-            {t("เปิด", "ເປີດ", "Open")}
-          </Link>
+          <>
+            <Link href={`/requests/${row.id}`} className={btnSecondary}>
+              {t("เปิด", "ເປີດ", "Open")}
+            </Link>
+            {row.deletedAt ? (
+              <ConfirmActionButton
+                action={restoreRequest}
+                fields={{ requestId: row.id }}
+                label={t("กู้คืน", "ກູ້ຄືນ", "Restore")}
+                pendingLabel={t("กำลังกู้คืน...", "ກຳລັງກູ້ຄືນ...", "Restoring...")}
+                variant="secondary"
+              />
+            ) : (
+              <>
+                <Link href={hrefFor({ edit: row.id })} scroll={false} className={btnSecondary}>
+                  {t("แก้ไข", "ແກ້ໄຂ", "Edit")}
+                </Link>
+                <ConfirmActionButton
+                  action={deleteRequest}
+                  fields={{ requestId: row.id }}
+                  label={t("ลบ", "ລຶບ", "Delete")}
+                  pendingLabel={t("กำลังลบ...", "ກຳລັງລຶບ...", "Deleting...")}
+                  confirmText={t(
+                    `ลบคำขอ ${row.requestNo}? คำขอจะถูกซ่อนจากทุกคน และกู้คืนได้ในหน้านี้`,
+                    `ລຶບຄຳຂໍ ${row.requestNo}ບໍ? ຄຳຂໍຈະຖືກເຊື່ອງຈາກທຸກຄົນ ແລະ ກູ້ຄືນໄດ້ໃນໜ້ານີ້`,
+                    `Delete request ${row.requestNo}? It is hidden from everyone and can be restored from this page.`,
+                  )}
+                />
+              </>
+            )}
+          </>
         )}
         emptyText={hasFilters ? t("ไม่พบคำขอที่ตรงกับเงื่อนไข", "ບໍ່ພົບຄຳຂໍທີ່ກົງກັບເງື່ອນໄຂ", "No requests match your filters") : t("ยังไม่มีคำขอ", "ຍັງບໍ່ມີຄຳຂໍ", "No requests yet")}
       />
 
       {report.total > 0 && <PaginationNav page={report.page} pageCount={report.pageCount} hrefFor={(page) => hrefFor({ page })} />}
+
+      {editing && (
+        <Modal title={t(`แก้ไขคำขอ ${editing.requestNo}`, `ແກ້ໄຂຄຳຂໍ ${editing.requestNo}`, `Edit request ${editing.requestNo}`)} closeHref={closeHref}>
+          <RequestEditForm
+            request={editing.request}
+            approvers={editApprovers}
+            canChangeApprover={editing.status === "PENDING_APPROVAL"}
+            returnTo={closeHref}
+            cancelHref={closeHref}
+          />
+        </Modal>
+      )}
     </div>
   );
 }

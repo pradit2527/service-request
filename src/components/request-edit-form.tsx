@@ -20,15 +20,23 @@ export type EditableRequest = {
   approverId: string;
 };
 
-/** Edits the details of a request from system management. The approver can only be changed while it awaits approval. */
+/**
+ * Edits the details of a request from system management. The approver can only be changed while it awaits approval.
+ * Inside a report pop-up, `returnTo` is where to go after saving and `cancelHref` is where "Cancel" leads (the report
+ * without the pop-up); on its own page both default to the request list of system management.
+ */
 export function RequestEditForm({
   request,
   approvers,
   canChangeApprover,
+  returnTo,
+  cancelHref = "/admin/requests",
 }: {
   request: EditableRequest;
   approvers: { id: string; name: string; department: string | null }[];
   canChangeApprover: boolean;
+  returnTo?: string;
+  cancelHref?: string;
 }) {
   const t = useT();
   const [state, action, pending] = useActionState(updateRequestByAdmin, undefined);
@@ -38,6 +46,7 @@ export function RequestEditForm({
   return (
     <form onSubmit={submitWithoutReset(action)} className={`${cardClass} space-y-5 p-5 sm:p-8`} noValidate>
       <input type="hidden" name="requestId" value={request.id} />
+      {returnTo && <input type="hidden" name="returnTo" value={returnTo} />}
 
       <div>
         <label htmlFor="title" className={labelClass}>
@@ -125,7 +134,7 @@ export function RequestEditForm({
         <button type="submit" disabled={pending} className={btnPrimary}>
           {pending ? t("กำลังบันทึก...", "ກຳລັງບັນທຶກ...", "Saving...") : t("บันทึก", "ບັນທຶກ", "Save")}
         </button>
-        <Link href="/admin/requests" className={btnSecondary}>
+        <Link href={cancelHref} className={btnSecondary}>
           {t("ยกเลิก", "ຍົກເລີກ", "Cancel")}
         </Link>
       </div>

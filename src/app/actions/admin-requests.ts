@@ -11,6 +11,7 @@ import type { Translate } from "@/lib/i18n";
 import { getI18n } from "@/lib/i18n-server";
 import { PRIORITIES } from "@/lib/labels";
 import { canEditRequest } from "@/lib/permissions";
+import { safeReturn } from "@/lib/safe-return";
 
 function notFoundMessage(t: Translate) {
   return t("ไม่พบคำขอ", "ບໍ່ພົບຄຳຂໍ", "Request not found");
@@ -18,6 +19,7 @@ function notFoundMessage(t: Translate) {
 
 function revalidateRequest(requestId: string) {
   revalidatePath("/admin/requests");
+  revalidatePath("/reports", "layout");
   revalidatePath(`/requests/${requestId}`);
   revalidatePath("/requests");
   revalidatePath("/approvals");
@@ -144,7 +146,9 @@ export async function updateRequestByAdmin(_prev: ActionState, formData: FormDat
   }
 
   revalidateRequest(requestId);
-  redirect("/admin/requests");
+  // From a report pop-up the form says where to return to; anything outside the reports and system management is ignored.
+  const returnTo = formData.get("returnTo");
+  redirect(safeReturn(typeof returnTo === "string" ? returnTo : null, "/admin/requests"));
 }
 
 /** Soft delete: the request is hidden everywhere except system management, where it can be restored. */
