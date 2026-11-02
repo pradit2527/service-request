@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, BookOpen, Check, Plus, Search, ShieldCheck, TriangleAlert } from "lucide-react";
+import { ArrowRight, BookOpen, Check, Search, ShieldCheck, TriangleAlert } from "lucide-react";
+import { HeroWatermark } from "@/components/hero-watermark";
 import { TrendCard, TypeBreakdownCard, WorkloadCard } from "@/components/insight-cards";
 import { RequestTable } from "@/components/request-list";
 import { SectionHeader } from "@/components/section-header";
@@ -34,7 +35,7 @@ async function Hero({ name, summary, search }: { name: string; summary: string; 
   const popularSearches = ["Wi-Fi", "VPN", t("รีเซ็ตรหัสผ่าน", "ຣີເຊັດລະຫັດຜ່ານ", "Reset password"), "Shared Folder"];
 
   return (
-    <section className="relative overflow-hidden rounded-3xl bg-slate-950 px-5 py-6 text-white sm:px-8 sm:py-8">
+    <section className="relative flex flex-col justify-center overflow-hidden rounded-3xl bg-slate-950 px-5 py-6 text-white sm:min-h-44 sm:px-8 sm:py-8">
       <div
         className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_130%_at_88%_-15%,rgb(99_102_241/0.38),transparent_62%),radial-gradient(45%_90%_at_8%_125%,rgb(14_165_233/0.2),transparent_62%)]"
         aria-hidden
@@ -43,34 +44,14 @@ async function Hero({ name, summary, search }: { name: string; summary: string; 
         className="bg-grid pointer-events-none absolute inset-0 opacity-50 [mask-image:radial-gradient(ellipse_at_top_right,black,transparent_70%)]"
         aria-hidden
       />
+      <HeroWatermark />
 
-      <div className="relative flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-        <div className="max-w-2xl">
-          <p className="text-xs font-medium tracking-wide text-slate-400">{formatDateLong(lang)}</p>
-          <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">
-            {t("ยินดีต้อนรับ", "ຍິນດີຕ້ອນຮັບ", "Welcome")}, {name}
-          </h1>
-          <p className="mt-2 text-sm text-slate-400 sm:text-[15px]">{summary}</p>
-        </div>
-
-        {!search && (
-          <div className="flex shrink-0 flex-wrap gap-2.5">
-            <Link
-              href="/requests/new"
-              className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 transition hover:bg-slate-100 active:scale-[0.98]"
-            >
-              <Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />
-              {t("สร้างคำขอใหม่", "ສ້າງຄຳຂໍໃໝ່", "New request")}
-            </Link>
-            <Link
-              href="/requests"
-              className="inline-flex items-center gap-2 rounded-xl bg-white/[0.07] px-4 py-2.5 text-sm font-medium text-white ring-1 ring-white/15 transition hover:bg-white/[0.12]"
-            >
-              {t("ดูคำขอทั้งหมด", "ເບິ່ງຄຳຂໍທັງໝົດ", "View all requests")}
-              <ArrowRight className="h-4 w-4" aria-hidden />
-            </Link>
-          </div>
-        )}
+      <div className="relative max-w-2xl">
+        <p className="text-xs font-medium tracking-wide text-slate-400">{formatDateLong(lang)}</p>
+        <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">
+          {t("ยินดีต้อนรับ", "ຍິນດີຕ້ອນຮັບ", "Welcome")}, {name}
+        </h1>
+        <p className="mt-2 text-sm text-slate-400 sm:text-[15px]">{summary}</p>
       </div>
 
       {search && (
