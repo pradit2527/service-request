@@ -22,7 +22,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     },
   ];
   if (isStaff(user)) items.push({ href: "/my-tasks", label: t("งานของฉัน", "ວຽກຂອງຂ້ອຍ", "My tasks"), icon: "tasks", badge: myTasks });
-  items.push({ href: "/kb", label: t("ฐานความรู้", "ຖານຄວາມຮູ້", "Knowledge base"), icon: "kb" });
   if (isManager(user)) {
     items.push({ href: "/approvals", label: t("รออนุมัติ", "ລໍຖ້າອະນຸມັດ", "Approvals"), icon: "approvals", badge: pendingApprovals });
   }

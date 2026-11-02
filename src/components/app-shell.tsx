@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
-  BookOpen,
   ClipboardCheck,
   LayoutDashboard,
   ListChecks,
@@ -27,7 +26,7 @@ import { Logo } from "./logo";
 export type NavItem = {
   href: string;
   label: string;
-  icon: "dashboard" | "requests" | "tasks" | "kb" | "approvals" | "settings";
+  icon: "dashboard" | "requests" | "tasks" | "approvals" | "settings";
   badge?: number;
 };
 
@@ -35,7 +34,6 @@ const ICONS: Record<NavItem["icon"], LucideIcon> = {
   dashboard: LayoutDashboard,
   requests: ListChecks,
   tasks: ClipboardCheck,
-  kb: BookOpen,
   approvals: ShieldCheck,
   settings: Settings,
 };
