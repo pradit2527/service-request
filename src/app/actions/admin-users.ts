@@ -14,6 +14,7 @@ import type { Translate } from "@/lib/i18n";
 import { getI18n } from "@/lib/i18n-server";
 import { ROLES } from "@/lib/labels";
 import { canCreateUser, canModifyUser, type ModifyUserResult } from "@/lib/permissions";
+import { safeReturn } from "@/lib/safe-return";
 import { departmentField, emailField, nameField, phoneField } from "@/lib/user-fields";
 
 function checkInputMessage(t: Translate) {
@@ -51,6 +52,12 @@ function refusalMessage(reason: Extract<ModifyUserResult, { ok: false }>["reason
         "You cannot change your own role or status, or delete your own account. Ask another administrator",
       );
   }
+}
+
+/** Where to go after saving: the report pop-up the form was opened from, or the user list of system management. */
+function returnTarget(formData: FormData): string {
+  const returnTo = formData.get("returnTo");
+  return safeReturn(typeof returnTo === "string" ? returnTo : null, "/admin/users");
 }
 
 function userSchema(t: Translate) {
@@ -111,7 +118,8 @@ export async function createUser(_prev: ActionState, formData: FormData): Promis
   }
 
   revalidatePath("/admin/users");
-  redirect("/admin/users");
+  revalidatePath("/reports", "layout");
+  redirect(returnTarget(formData));
 }
 
 export async function updateUserAdmin(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -149,7 +157,8 @@ export async function updateUserAdmin(_prev: ActionState, formData: FormData): P
   }
 
   revalidatePath("/admin/users");
-  redirect("/admin/users");
+  revalidatePath("/reports", "layout");
+  redirect(returnTarget(formData));
 }
 
 export async function deleteUser(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -227,5 +236,6 @@ export async function deleteUser(_prev: ActionState, formData: FormData): Promis
   }
 
   revalidatePath("/admin/users");
-  redirect("/admin/users");
+  revalidatePath("/reports", "layout");
+  redirect(returnTarget(formData));
 }

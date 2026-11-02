@@ -4,13 +4,15 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
 import type { EditableRequest } from "@/components/request-edit-form";
+import type { UserFormInitial } from "@/components/user-form";
 import { db } from "./db";
+import type { Role } from "./labels";
 import { paginate } from "./pagination";
 import type { Viewer } from "./permissions";
 import { PAGE_SIZE } from "./queries";
-import { parseRequestReportParams, requestReportScope, type RequestReportParams } from "./report-params";
+import { parseRequestReportParams, requestReportScope, type RequestReportParams, type UserReportParams } from "./report-params";
 import { approvalOutcome, type ApprovalOutcome } from "./report-summary";
-import { buildRequestReportWhere } from "./report-where";
+import { buildRequestReportWhere, buildUserReportWhere } from "./report-where";
 
 const requestReportSelect = {
   id: true,
@@ -110,4 +112,61 @@ export async function getRequestReportRecord(viewer: Viewer, id: string) {
     approverId: record.approverId ?? "",
   };
   return { request, requestNo: record.requestNo, status: record.status, requesterId: record.requesterId };
+}
+
+// ---------------------------------------------------------------------------------------------
+// Users (administrators only: the page checks the role)
+// ---------------------------------------------------------------------------------------------
+
+export type UserReportRow = {
+  id: string;
+  name: string;
+  email: string;
+  department: string | null;
+  role: Role;
+  isActive: boolean;
+  lastLoginAt: Date | null;
+  createdAt: Date;
+  /** Requests the user filed, not counting deleted ones. */
+  requestCount: number;
+};
+
+export async function listUserReport(params: UserReportParams) {
+  const where = buildUserReportWhere(params);
+  const total = await db.user.count({ where });
+  const { page, pageCount, skip } = paginate(total, params.page, PAGE_SIZE);
+
+  // People who never signed in have no date; they go last whichever way the column is sorted.
+  const order: Prisma.UserOrderByWithRelationInput =
+    params.sort === "lastLoginAt" ? { lastLoginAt: { sort: params.dir, nulls: "last" } } : { [params.sort]: params.dir };
+
+  const records = await db.user.findMany({
+    where,
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      department: true,
+      role: true,
+      isActive: true,
+      lastLoginAt: true,
+      createdAt: true,
+      _count: { select: { requests: { where: { deletedAt: null } } } },
+    },
+    orderBy: [order, { id: "asc" }],
+    skip,
+    take: PAGE_SIZE,
+  });
+
+  const items: UserReportRow[] = records.map(({ _count, ...user }) => ({ ...user, requestCount: _count.requests }));
+  return { items, total, page, pageCount };
+}
+
+/** The user behind the edit pop-up of the user report. */
+export async function getUserReportRecord(id: string): Promise<UserFormInitial | null> {
+  const user = await db.user.findUnique({
+    where: { id },
+    select: { id: true, email: true, name: true, role: true, department: true, phone: true, isActive: true },
+  });
+  return user ? { ...user, department: user.department ?? "", phone: user.phone ?? "" } : null;
 }

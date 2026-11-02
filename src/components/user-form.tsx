@@ -24,6 +24,8 @@ export type UserFormInitial = {
  * - `lockRoleAndStatus`: editing yourself, so role and active status are shown but cannot be changed.
  * - `readOnly`: a manager looking at an administrator account.
  * - `inAdminEmails`: the address is in ADMIN_EMAILS, which makes it an administrator again at every sign-in.
+ * - `returnTo` / `cancelHref`: inside a report pop-up, where to go after saving and where "Cancel" leads; on its own page
+ *   both default to the user list of system management.
  */
 export function UserForm({
   mode,
@@ -32,6 +34,8 @@ export function UserForm({
   lockRoleAndStatus = false,
   readOnly = false,
   inAdminEmails = false,
+  returnTo,
+  cancelHref = "/admin/users",
 }: {
   mode: "create" | "edit";
   initial?: UserFormInitial;
@@ -39,6 +43,8 @@ export function UserForm({
   lockRoleAndStatus?: boolean;
   readOnly?: boolean;
   inAdminEmails?: boolean;
+  returnTo?: string;
+  cancelHref?: string;
 }) {
   const t = useT();
   const [state, action, pending] = useActionState(mode === "create" ? createUser : updateUserAdmin, undefined);
@@ -50,6 +56,7 @@ export function UserForm({
   return (
     <form onSubmit={submitWithoutReset(action)} className={`${cardClass} space-y-6 p-5 sm:p-8`} noValidate>
       {initial && <input type="hidden" name="userId" value={initial.id} />}
+      {returnTo && <input type="hidden" name="returnTo" value={returnTo} />}
       {/* Disabled controls are not submitted, so a hidden copy keeps the values the server validates. */}
       {lockRoleAndStatus && initial && (
         <>
@@ -217,7 +224,7 @@ export function UserForm({
                 : t("บันทึก", "ບັນທຶກ", "Save")}
           </button>
         )}
-        <Link href="/admin/users" className={btnSecondary}>
+        <Link href={cancelHref} className={btnSecondary}>
           {readOnly ? t("กลับ", "ກັບຄືນ", "Back") : t("ยกเลิก", "ຍົກເລີກ", "Cancel")}
         </Link>
       </div>
