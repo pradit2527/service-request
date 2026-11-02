@@ -48,7 +48,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ id: st
           <div className="p-6 sm:p-8 xl:p-10">
             <div className="flex flex-wrap items-center gap-2">
               <Badge tone="indigo">{kbCategoryLabel(article.category, lang)}</Badge>
-              {!article.isPublished && <Badge tone="amber">{t("ฉบับร่าง · เห็นเฉพาะทีม IT", "ສະບັບຮ່າງ · ເຫັນສະເພາະທີມ IT", "Draft · visible to the IT team only")}</Badge>}
+              {!article.isPublished && <Badge tone="amber">{t("ฉบับร่าง · เห็นเฉพาะทีม IT หัวหน้างาน และผู้ดูแลระบบ", "ສະບັບຮ່າງ · ເຫັນສະເພາະທີມ IT, ຫົວໜ້າ ແລະ ຜູ້ດູແລລະບົບ", "Draft · visible to the IT team, managers and administrators only")}</Badge>}
             </div>
             <h1 className="mt-3 text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">{article.title}</h1>
             <p className="mt-2 text-slate-500 xl:text-lg">{article.summary}</p>

@@ -80,9 +80,9 @@ export function ArticleForm({ initial }: { initial: Initial }) {
       <label className="flex items-center gap-2.5 text-sm text-slate-700">
         <input type="checkbox" name="isPublished" checked={values.isPublished} onChange={(e) => set("isPublished", e.target.checked)} className="h-4 w-4 rounded border-slate-300 accent-indigo-600" />
         {t(
-          "เผยแพร่ให้พนักงานทุกคนเห็น (ถ้าไม่เลือก จะเป็นฉบับร่างเห็นเฉพาะทีม IT)",
-          "ເຜີຍແຜ່ໃຫ້ພະນັກງານທຸກຄົນເຫັນ (ຖ້າບໍ່ເລືອກ ຈະເປັນສະບັບຮ່າງ ເຫັນສະເພາະທີມ IT)",
-          "Publish for all employees (if unchecked, it stays a draft visible to the IT team only)",
+          "เผยแพร่ให้พนักงานทุกคนเห็น (ถ้าไม่เลือก จะเป็นฉบับร่างเห็นเฉพาะทีม IT หัวหน้างาน และผู้ดูแลระบบ)",
+          "ເຜີຍແຜ່ໃຫ້ພະນັກງານທຸກຄົນເຫັນ (ຖ້າບໍ່ເລືອກ ຈະເປັນສະບັບຮ່າງ ເຫັນສະເພາະທີມ IT, ຫົວໜ້າ ແລະ ຜູ້ດູແລລະບົບ)",
+          "Publish for all employees (if unchecked, it stays a draft visible to the IT team, managers and administrators only)",
         )}
       </label>
 
