@@ -48,7 +48,7 @@ export const SLA_TIER_DEF: Record<SlaTier, SlaTierDef> = {
       "Mid-level requests, e.g. installing licensed software, creating a new hire's email",
     ),
     responseMinutes: 4 * 60,
-    fulfillmentMinutes: 2 * BUSINESS_DAY_MINUTES,
+    fulfillmentMinutes: BUSINESS_DAY_MINUTES,
     minLeadBusinessDays: 1,
   },
   HARDWARE: {
@@ -59,7 +59,7 @@ export const SLA_TIER_DEF: Record<SlaTier, SlaTierDef> = {
       "Issuing or buying new equipment; depends on procurement lead time",
     ),
     responseMinutes: BUSINESS_DAY_MINUTES,
-    fulfillmentMinutes: 7 * BUSINESS_DAY_MINUTES,
+    fulfillmentMinutes: 15 * BUSINESS_DAY_MINUTES,
     minLeadBusinessDays: 3,
   },
   COMPLEX: {
@@ -70,8 +70,8 @@ export const SLA_TIER_DEF: Record<SlaTier, SlaTierDef> = {
       "Structural changes or relocations, e.g. moving a whole department, installing a server",
     ),
     responseMinutes: BUSINESS_DAY_MINUTES,
-    fulfillmentMinutes: 10 * BUSINESS_DAY_MINUTES,
-    minLeadBusinessDays: 5,
+    fulfillmentMinutes: BUSINESS_DAY_MINUTES,
+    minLeadBusinessDays: 1,
   },
 };
 
@@ -425,6 +425,18 @@ function trimmed(n: number): string {
 }
 
 /** "45 min", "2 business hrs", "1 business day", "1.5 business days" in the given language. */
+/**
+ * The fulfillment target as people read it: one value ("1 business day"), or for a tier that has a range the lower end
+ * (the notice it needs) and the deadline ("3–15 business days"). Procurement is the only such tier.
+ */
+export function formatFulfillmentRange(tier: SlaTier, lang: Lang): string {
+  const def = SLA_TIER_DEF[tier];
+  const lowerMinutes = def.minLeadBusinessDays * BUSINESS_DAY_MINUTES;
+  if (lowerMinutes < BUSINESS_DAY_MINUTES || lowerMinutes >= def.fulfillmentMinutes) return formatBusinessDuration(def.fulfillmentMinutes, lang);
+  const unit = l("วันทำการ", "ວັນເຮັດວຽກ", "business days")[lang];
+  return `${def.minLeadBusinessDays}–${trimmed(def.fulfillmentMinutes / BUSINESS_DAY_MINUTES)} ${unit}`;
+}
+
 export function formatBusinessDuration(minutes: number, lang: Lang): string {
   const abs = Math.abs(minutes);
 

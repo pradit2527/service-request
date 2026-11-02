@@ -14,6 +14,7 @@ import {
   classifyTier,
   earliestNeededBy,
   formatBusinessDuration,
+  formatFulfillmentRange,
 } from "@/lib/sla";
 import { submitWithoutReset } from "@/lib/submit-without-reset";
 import { btnSecondary, cardClass, errorTextClass, helpTextClass, inputClass, inputErrorClass, labelClass } from "@/lib/ui";
@@ -404,9 +405,9 @@ export function RequestForm({
                   </p>
                   <p className="mt-0.5 text-slate-600">
                     {t(
-                      `ตอบรับภายใน ${formatBusinessDuration(sla.responseMinutes, lang)} · ส่งมอบภายใน ${formatBusinessDuration(sla.fulfillmentMinutes, lang)}`,
-                      `ຕອບຮັບພາຍໃນ ${formatBusinessDuration(sla.responseMinutes, lang)} · ສົ່ງມອບພາຍໃນ ${formatBusinessDuration(sla.fulfillmentMinutes, lang)}`,
-                      `Response within ${formatBusinessDuration(sla.responseMinutes, lang)} · Fulfillment within ${formatBusinessDuration(sla.fulfillmentMinutes, lang)}`,
+                      `ตอบรับภายใน ${formatBusinessDuration(sla.responseMinutes, lang)} · ส่งมอบภายใน ${formatFulfillmentRange(tier, lang)}`,
+                      `ຕອບຮັບພາຍໃນ ${formatBusinessDuration(sla.responseMinutes, lang)} · ສົ່ງມອບພາຍໃນ ${formatFulfillmentRange(tier, lang)}`,
+                      `Response within ${formatBusinessDuration(sla.responseMinutes, lang)} · Fulfillment within ${formatFulfillmentRange(tier, lang)}`,
                     )}
                     <span className="text-slate-400"> {t("(นับเวลาทำการ)", "(ນັບເວລາເຮັດວຽກ)", "(business hours only)")}</span>
                   </p>

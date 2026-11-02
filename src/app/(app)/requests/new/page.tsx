@@ -11,7 +11,7 @@ import { canManageSystem } from "@/lib/permissions";
 import { listApprovers, listRequesterOptions } from "@/lib/queries";
 import { REQUEST_CATEGORIES, REQUEST_TYPE_DEFS, isRequestType } from "@/lib/request-types";
 import { todayBangkok } from "@/lib/request-number";
-import { SLA_TIER_DEF, classifyTier, formatBusinessDuration } from "@/lib/sla";
+import { classifyTier, formatFulfillmentRange } from "@/lib/sla";
 import { slaHolidayList } from "@/lib/sla-calendar";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -86,7 +86,7 @@ export default async function NewRequestPage({ searchParams }: { searchParams: P
         type: requestType,
         label: t(REQUEST_TYPE_DEFS[requestType].label),
         description: t(REQUEST_TYPE_DEFS[requestType].description),
-        fulfillment: formatBusinessDuration(SLA_TIER_DEF[classifyTier(requestType, {})].fulfillmentMinutes, lang),
+        fulfillment: formatFulfillmentRange(classifyTier(requestType, {}), lang),
       })),
     }));
 

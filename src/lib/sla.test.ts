@@ -12,6 +12,7 @@ import {
   earliestNeededBy,
   evaluateSla,
   formatBusinessDuration,
+  formatFulfillmentRange,
   slaPatchForStatusChange,
   startOfMonthBangkok,
   tally,
@@ -108,7 +109,8 @@ describe("add business days", () => {
   it("derives the earliest needed-by date from the tier's lead time", () => {
     expect(earliestNeededBy("STANDARD", "2026-10-30")).toBe("2026-10-30");
     expect(earliestNeededBy("HARDWARE", "2026-10-30")).toBe("2026-11-04");
-    expect(earliestNeededBy("COMPLEX", "2026-10-30")).toBe("2026-11-06");
+    // A complex request is now delivered within a day too, so it needs a day of notice, not a week.
+    expect(earliestNeededBy("COMPLEX", "2026-10-30")).toBe("2026-11-02");
   });
 });
 
@@ -121,17 +123,32 @@ describe("SLA tiers", () => {
     }
   });
 
-  it("gets slower and longer from standard to complex", () => {
-    expect(SLA_TIER_DEF.STANDARD.fulfillmentMinutes).toBeLessThan(SLA_TIER_DEF.PROVISIONING.fulfillmentMinutes);
-    expect(SLA_TIER_DEF.PROVISIONING.fulfillmentMinutes).toBeLessThan(SLA_TIER_DEF.HARDWARE.fulfillmentMinutes);
-    expect(SLA_TIER_DEF.HARDWARE.fulfillmentMinutes).toBeLessThan(SLA_TIER_DEF.COMPLEX.fulfillmentMinutes);
+  it("delivers in one business day, except what has to be bought", () => {
+    for (const tier of ["STANDARD", "PROVISIONING", "COMPLEX"] as const) expect(SLA_TIER_DEF[tier].fulfillmentMinutes).toBe(BUSINESS_DAY_MINUTES);
+    expect(SLA_TIER_DEF.HARDWARE.fulfillmentMinutes).toBe(15 * BUSINESS_DAY_MINUTES);
+  });
+
+  it("never asks for more notice than the delivery target", () => {
+    for (const tier of SLA_TIERS) {
+      expect(SLA_TIER_DEF[tier].minLeadBusinessDays * BUSINESS_DAY_MINUTES).toBeLessThanOrEqual(SLA_TIER_DEF[tier].fulfillmentMinutes);
+    }
+  });
+
+  it("shows the procurement target as a range and every other target as one value", () => {
+    expect(formatFulfillmentRange("HARDWARE", "th")).toBe("3–15 วันทำการ");
+    expect(formatFulfillmentRange("HARDWARE", "lo")).toBe("3–15 ວັນເຮັດວຽກ");
+    expect(formatFulfillmentRange("HARDWARE", "en")).toBe("3–15 business days");
+    for (const tier of ["STANDARD", "PROVISIONING", "COMPLEX"] as const) {
+      expect(formatFulfillmentRange(tier, "th")).toBe("1 วันทำการ");
+      expect(formatFulfillmentRange(tier, "en")).toBe("1 business day");
+    }
   });
 
   it("matches the agreed commitments", () => {
     expect(SLA_TIER_DEF.STANDARD).toMatchObject({ responseMinutes: 120, fulfillmentMinutes: 480 });
-    expect(SLA_TIER_DEF.PROVISIONING).toMatchObject({ responseMinutes: 240, fulfillmentMinutes: 960 });
-    expect(SLA_TIER_DEF.HARDWARE).toMatchObject({ responseMinutes: 480, fulfillmentMinutes: 3360 });
-    expect(SLA_TIER_DEF.COMPLEX).toMatchObject({ responseMinutes: 480, fulfillmentMinutes: 4800 });
+    expect(SLA_TIER_DEF.PROVISIONING).toMatchObject({ responseMinutes: 240, fulfillmentMinutes: 480 });
+    expect(SLA_TIER_DEF.HARDWARE).toMatchObject({ responseMinutes: 480, fulfillmentMinutes: 7200, minLeadBusinessDays: 3 });
+    expect(SLA_TIER_DEF.COMPLEX).toMatchObject({ responseMinutes: 480, fulfillmentMinutes: 480, minLeadBusinessDays: 1 });
   });
 
   it("computes due dates in business time", () => {
