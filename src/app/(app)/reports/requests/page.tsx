@@ -22,7 +22,7 @@ import { buildReportHref, parseRequestReportParams } from "@/lib/report-params";
 import { getRequestReportRecord, listRequestReport, type RequestReportRow } from "@/lib/report-queries";
 import { REQUEST_CATEGORIES, REQUEST_TYPE_DEFS } from "@/lib/request-types";
 import { CURRENT_STATUSES, STATUS_LABEL } from "@/lib/status";
-import { btnPrimary, btnSecondary, inputClass, labelClass } from "@/lib/ui";
+import { btnPrimary, btnSecondary, btnTiny, inputClass, labelClass } from "@/lib/ui";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getI18n();
@@ -48,6 +48,8 @@ export default async function RequestReportPage({ searchParams }: { searchParams
   const hasFilters = Boolean(
     params.q || params.status || params.type || params.priority || params.from || params.to || params.slaBreached || params.assignee || params.approver || params.result || params.deleted,
   );
+
+  const filterCount = [params.status, params.type, params.priority, params.from, params.to, params.slaBreached, params.assignee, params.approver, params.result, params.deleted].filter(Boolean).length;
 
   // Every link keeps the search, the filters and the sort, and changes only what it must.
   const sorted = params.sort === "createdAt" && params.dir === "desc" ? {} : { sort: params.sort, dir: params.dir };
@@ -80,13 +82,15 @@ export default async function RequestReportPage({ searchParams }: { searchParams
 
   const person = (name: string | undefined) =>
     name ? (
-      <span className="inline-flex max-w-[10rem] items-center gap-2">
+      <span className="inline-flex max-w-[8rem] items-center gap-2">
         <Avatar name={name} size="xs" />
         <span className="truncate">{name}</span>
       </span>
     ) : (
       <span className="text-slate-400">-</span>
     );
+  // For a narrow column: just the avatar (the name is in its tooltip).
+  const avatarOnly = (name: string | undefined) => (name ? <Avatar name={name} size="xs" /> : <span className="text-slate-400">-</span>);
 
   const columns: Column<RequestReportRow>[] = [
     {
@@ -94,50 +98,51 @@ export default async function RequestReportPage({ searchParams }: { searchParams
       header: t("เลขที่", "ເລກທີ່", "No."),
       sortKey: "requestNo",
       card: "title",
-      render: (row) => <span className="rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] text-slate-600">{row.requestNo}</span>,
+      render: (row) => <span className="rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] whitespace-nowrap text-slate-600">{row.requestNo}</span>,
     },
     {
       key: "title",
       header: t("หัวข้อ", "ຫົວຂໍ້", "Subject"),
       sortKey: "title",
       card: "title",
-      className: "max-w-xs",
+      // Takes the room the other columns leave (max-w-0 lets it shrink to nothing), and the subject is cut short.
+      className: "w-full max-w-0",
       render: (row) => (
         <div className="flex min-w-0 items-center gap-2.5">
-          <TypeIcon type={row.type} size="sm" />
-          <div className="min-w-0">
-            <Link href={`/requests/${row.id}`} className="block truncate font-medium text-slate-900 hover:text-indigo-700">
-              {row.title}
-            </Link>
-            <p className="truncate text-xs text-slate-500">
-              {t(REQUEST_TYPE_DEFS[row.type].label)}
-              {row.deletedAt && <Badge tone="red">{t("ถูกลบ", "ຖືກລຶບ", "Deleted")}</Badge>}
-            </p>
-          </div>
+          <TypeIcon type={row.type} size="xs" />
+          {/* One line: the type is in the tooltip, so every row stays the same short height. */}
+          <Link
+            href={`/requests/${row.id}`}
+            title={`${row.title} · ${t(REQUEST_TYPE_DEFS[row.type].label)}`}
+            className="block min-w-0 truncate font-medium text-slate-900 hover:text-indigo-700"
+          >
+            {row.title}
+          </Link>
+          {row.deletedAt && <Badge tone="red">{t("ถูกลบ", "ຖືກລຶບ", "Deleted")}</Badge>}
         </div>
       ),
     },
-    { key: "requester", header: t("ผู้ขอ", "ຜູ້ຂໍ", "Requester"), showFrom: "xl", render: (row) => person(row.requester.name) },
-    ...(admin ? [{ key: "approver", header: t("ผู้อนุมัติ", "ຜູ້ອະນຸມັດ", "Approver"), showFrom: "2xl" as const, render: (row: RequestReportRow) => person(row.approver?.name) }] : []),
-    { key: "assignee", header: t("ผู้รับผิดชอบ", "ຜູ້ຮັບຜິດຊອບ", "Assignee"), showFrom: "2xl", render: (row) => person(row.assignee?.name) },
+    { key: "requester", header: t("ผู้ขอ", "ຜູ້ຂໍ", "Requester"), showFrom: "wide", render: (row) => person(row.requester.name) },
+    ...(admin ? [{ key: "approver", header: t("ผู้อนุมัติ", "ຜູ້ອະນຸມັດ", "Approver"), showFrom: "widest" as const, render: (row: RequestReportRow) => avatarOnly(row.approver?.name) }] : []),
+    { key: "assignee", header: t("ผู้รับผิดชอบ", "ຜູ້ຮັບຜິດຊອບ", "Assignee"), showFrom: "widest", render: (row) => avatarOnly(row.assignee?.name) },
     { key: "status", header: t("สถานะ", "ສະຖານະ", "Status"), sortKey: "status", render: (row) => <StatusBadge status={row.status} /> },
-    { key: "priority", header: t("ความสำคัญ", "ຄວາມສຳຄັນ", "Priority"), sortKey: "priority", showFrom: "xl", render: (row) => <PriorityBadge priority={row.priority} /> },
-    { key: "sla", header: "SLA", card: "hidden", showFrom: "2xl", render: (row) => <SlaChip row={row} /> },
-    { key: "createdAt", header: t("วันที่ยื่น", "ວັນທີຍື່ນ", "Filed"), sortKey: "createdAt", showFrom: "xl", render: (row) => formatDate(row.createdAt, lang) },
+    { key: "priority", header: t("ความสำคัญ", "ຄວາມສຳຄັນ", "Priority"), sortKey: "priority", showFrom: "wider", render: (row) => <PriorityBadge priority={row.priority} /> },
+    { key: "sla", header: "SLA", card: "hidden", showFrom: "widest", render: (row) => <SlaChip row={row} /> },
+    { key: "createdAt", header: t("วันที่ยื่น", "ວັນທີຍື່ນ", "Filed"), sortKey: "createdAt", showFrom: "wider", render: (row) => formatDate(row.createdAt, lang) },
     {
       key: "neededBy",
       header: t("ต้องการใช้ภายใน", "ຕ້ອງການໃຊ້ພາຍໃນ", "Needed by"),
       sortKey: "neededBy",
-      showFrom: "2xl",
+      showFrom: "widest",
       render: (row) => (row.neededBy ? formatDate(row.neededBy, lang) : <span className="text-slate-400">-</span>),
     },
     {
       key: "outcome",
       header: t("ผลตัดสิน", "ຜົນຕັດສິນ", "Decision"),
       render: (row) => (
-        <div className="space-y-0.5">
+        <div className="flex items-center gap-1.5">
           {outcomeBadge(row)}
-          {row.outcome.at && <p className="text-xs text-slate-500">{formatDate(row.outcome.at, lang)}</p>}
+          {row.outcome.at && <span className="hidden text-xs text-slate-500 @min-[1450px]:inline">{formatDate(row.outcome.at, lang)}</span>}
         </div>
       ),
     },
@@ -146,13 +151,14 @@ export default async function RequestReportPage({ searchParams }: { searchParams
   const field = "min-w-0";
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-3">
       <ReportToolbar
         total={report.total}
         q={params.q}
         searchPlaceholder={t("ค้นหาเลขที่ หัวข้อ หรือชื่อผู้ขอ", "ຄົ້ນຫາເລກທີ່, ຫົວຂໍ້ ຫຼື ຊື່ຜູ້ຂໍ", "Search by number, subject or requester name")}
         preserve={{ sort: sorted.sort, dir: sorted.dir }}
         hasFilters={hasFilters}
+        filterCount={filterCount}
         clearHref={PATH}
         actions={
           <Link href="/requests/new" className={btnPrimary}>
@@ -282,7 +288,7 @@ export default async function RequestReportPage({ searchParams }: { searchParams
         actionsHeader={t("จัดการ", "ຈັດການ", "Actions")}
         actions={(row) => (
           <>
-            <Link href={`/requests/${row.id}`} className={btnSecondary}>
+            <Link href={`/requests/${row.id}`} className={`${btnSecondary} ${btnTiny}`}>
               {t("เปิด", "ເປີດ", "Open")}
             </Link>
             {row.deletedAt ? (
@@ -292,10 +298,11 @@ export default async function RequestReportPage({ searchParams }: { searchParams
                 label={t("กู้คืน", "ກູ້ຄືນ", "Restore")}
                 pendingLabel={t("กำลังกู้คืน...", "ກຳລັງກູ້ຄືນ...", "Restoring...")}
                 variant="secondary"
+                compact
               />
             ) : (
               <>
-                <Link href={hrefFor({ edit: row.id })} scroll={false} className={btnSecondary}>
+                <Link href={hrefFor({ edit: row.id })} scroll={false} className={`${btnSecondary} ${btnTiny}`}>
                   {t("แก้ไข", "ແກ້ໄຂ", "Edit")}
                 </Link>
                 <ConfirmActionButton
@@ -303,6 +310,7 @@ export default async function RequestReportPage({ searchParams }: { searchParams
                   fields={{ requestId: row.id }}
                   label={t("ลบ", "ລຶບ", "Delete")}
                   pendingLabel={t("กำลังลบ...", "ກຳລັງລຶບ...", "Deleting...")}
+                  compact
                   confirmText={t(
                     `ลบคำขอ ${row.requestNo}? คำขอจะถูกซ่อนจากทุกคน และกู้คืนได้ในหน้านี้`,
                     `ລຶບຄຳຂໍ ${row.requestNo}ບໍ? ຄຳຂໍຈະຖືກເຊື່ອງຈາກທຸກຄົນ ແລະ ກູ້ຄືນໄດ້ໃນໜ້ານີ້`,

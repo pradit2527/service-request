@@ -24,6 +24,9 @@ export const btnDanger = `${buttonBase} bg-white text-red-600 shadow-xs ring-1 r
 
 export const cardClass = "rounded-2xl border border-slate-200/80 bg-white shadow-card";
 
+/** Added to a button class to make it small, for the buttons at the end of a table row. */
+export const btnTiny = "px-2.5! py-1! text-xs!";
+
 export const labelClass = "mb-1.5 block text-sm font-medium text-slate-700";
 export const errorTextClass = "mt-1.5 text-xs font-medium text-red-600";
 export const helpTextClass = "mt-1.5 text-xs text-slate-500";

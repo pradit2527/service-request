@@ -14,12 +14,20 @@ export type Column<T> = {
   render: (row: T) => React.ReactNode;
   /** On a small screen (cards): "title" goes first, "meta" becomes a label and value, "hidden" is left out. */
   card?: "title" | "meta" | "hidden";
-  /** In the table, show this column only from this screen width up, so the table fits without sideways scrolling. */
-  showFrom?: "xl" | "2xl";
+  /**
+   * In the table, show this column only when the table is at least this wide (900, 1100 or 1450 px; the page is never
+   * wider than about 1470), so it always fits without sideways scrolling, whatever the screen or the sidebar.
+   * Without it the column is always shown.
+   */
+  showFrom?: "wide" | "wider" | "widest";
 };
 
-// Written out in full so Tailwind sees the class names.
-const SHOW_FROM = { xl: "hidden xl:table-cell", "2xl": "hidden 2xl:table-cell" } as const;
+// Written out in full so Tailwind sees the class names. They answer to the nearest @container (the table wrapper).
+const SHOW_FROM = {
+  wide: "hidden @min-[900px]:table-cell",
+  wider: "hidden @min-[1100px]:table-cell",
+  widest: "hidden @min-[1450px]:table-cell",
+} as const;
 
 /**
  * A table whose search, filters, sort and page all live in the address, so the server does the work.
@@ -54,8 +62,8 @@ export function DataTable<T>({
 
   return (
     <>
-      <div className={`${cardClass} hidden overflow-x-auto lg:block`}>
-        <table className="w-full min-w-max text-left text-sm">
+      <div className={`${cardClass} @container hidden overflow-x-auto lg:block`}>
+        <table className="w-full text-left text-sm">
           <thead className="sticky top-0 z-10 bg-slate-50/95 text-xs font-semibold tracking-wide text-slate-500 uppercase backdrop-blur">
             <tr className="border-b border-slate-200">
               {columns.map((column) => {
@@ -67,7 +75,7 @@ export function DataTable<T>({
                     key={column.key}
                     scope="col"
                     aria-sort={active ? (sort?.dir === "asc" ? "ascending" : "descending") : undefined}
-                    className={`px-3 py-3 whitespace-nowrap ${column.align === "right" ? "text-right" : ""} ${column.showFrom ? SHOW_FROM[column.showFrom] : ""}`}
+                    className={`px-2.5 py-2 align-bottom ${column.align === "right" ? "text-right" : ""} ${column.showFrom ? SHOW_FROM[column.showFrom] : ""}`}
                   >
                     {column.sortKey && hrefForSort ? (
                       <Link
@@ -84,7 +92,7 @@ export function DataTable<T>({
                 );
               })}
               {actions && (
-                <th scope="col" className="px-3 py-3 text-right whitespace-nowrap">
+                <th scope="col" className="px-2.5 py-2 text-right whitespace-nowrap">
                   {actionsHeader}
                 </th>
               )}
@@ -96,14 +104,14 @@ export function DataTable<T>({
                 {columns.map((column) => (
                   <td
                     key={column.key}
-                    className={`px-3 py-3 align-middle ${column.align === "right" ? "text-right" : ""} ${column.showFrom ? SHOW_FROM[column.showFrom] : ""} ${column.className ?? ""}`}
+                    className={`px-2.5 py-1 align-middle whitespace-nowrap ${column.align === "right" ? "text-right" : ""} ${column.showFrom ? SHOW_FROM[column.showFrom] : ""} ${column.className ?? ""}`}
                   >
                     {column.render(row)}
                   </td>
                 ))}
                 {actions && (
-                  <td className="px-3 py-3 align-middle">
-                    <div className="flex flex-wrap items-start justify-end gap-2">{actions(row)}</div>
+                  <td className="px-2.5 py-1 align-middle whitespace-nowrap">
+                    <div className="flex flex-nowrap items-center justify-end gap-1.5">{actions(row)}</div>
                   </td>
                 )}
               </tr>
@@ -113,7 +121,7 @@ export function DataTable<T>({
             <tfoot>
               <tr className="border-t-2 border-slate-200 bg-slate-100/70 font-semibold text-slate-900">
                 {columns.map((column) => (
-                  <td key={column.key} className={`px-3 py-3 ${column.align === "right" ? "text-right" : ""} ${column.showFrom ? SHOW_FROM[column.showFrom] : ""}`}>
+                  <td key={column.key} className={`px-2.5 py-2.5 whitespace-nowrap ${column.align === "right" ? "text-right" : ""} ${column.showFrom ? SHOW_FROM[column.showFrom] : ""}`}>
                     {column.render(footer)}
                   </td>
                 ))}

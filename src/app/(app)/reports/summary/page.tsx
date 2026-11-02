@@ -78,20 +78,22 @@ export default async function SummaryReportPage({ searchParams }: { searchParams
   };
 
   const columns: Column<SummaryRow>[] = [
-    { key: "label", header: groupLabel[params.group], sortKey: "label", card: "title", render: label },
+    // The label may wrap onto two lines, so the numbers beside it keep their room.
+    { key: "label", header: groupLabel[params.group], sortKey: "label", card: "title", className: "min-w-[7rem] whitespace-normal!", render: label },
     { key: "total", header: t("ทั้งหมด", "ທັງໝົດ", "Total"), sortKey: "total", align: "right", render: (row) => count(row.total) },
     { key: "open", header: t("ยังเปิดอยู่", "ຍັງເປີດຢູ່", "Open"), sortKey: "open", align: "right", render: (row) => count(row.open) },
     { key: "completed", header: t("เสร็จสิ้น", "ສຳເລັດ", "Completed"), sortKey: "completed", align: "right", render: (row) => count(row.completed) },
     { key: "rejected", header: t("ไม่อนุมัติ", "ບໍ່ອະນຸມັດ", "Rejected"), sortKey: "rejected", align: "right", render: (row) => count(row.rejected) },
-    { key: "cancelled", header: t("ยกเลิก", "ຍົກເລີກ", "Cancelled"), sortKey: "cancelled", align: "right", render: (row) => count(row.cancelled) },
-    { key: "pendingApproval", header: t("รออนุมัติ", "ລໍຖ້າອະນຸມັດ", "Pending approval"), sortKey: "pendingApproval", align: "right", render: (row) => count(row.pendingApproval) },
-    { key: "responseRate", header: t("ผ่าน SLA ตอบรับ", "ຜ່ານ SLA ຕອບຮັບ", "Response SLA met"), sortKey: "responseRate", align: "right", render: (row) => rate(row.response) },
-    { key: "fulfillmentRate", header: t("ผ่าน SLA ส่งมอบ", "ຜ່ານ SLA ສົ່ງມອບ", "Fulfillment SLA met"), sortKey: "fulfillmentRate", align: "right", render: (row) => rate(row.fulfillment) },
+    { key: "cancelled", header: t("ยกเลิก", "ຍົກເລີກ", "Cancelled"), sortKey: "cancelled", align: "right", showFrom: "wider", render: (row) => count(row.cancelled) },
+    { key: "pendingApproval", header: t("รออนุมัติ", "ລໍຖ້າອະນຸມັດ", "Pending approval"), sortKey: "pendingApproval", align: "right", showFrom: "wider", render: (row) => count(row.pendingApproval) },
+    { key: "responseRate", header: t("ผ่าน SLA ตอบรับ", "ຜ່ານ SLA ຕອບຮັບ", "Response SLA met"), sortKey: "responseRate", align: "right", showFrom: "wide", render: (row) => rate(row.response) },
+    { key: "fulfillmentRate", header: t("ผ่าน SLA ส่งมอบ", "ຜ່ານ SLA ສົ່ງມອບ", "Fulfillment SLA met"), sortKey: "fulfillmentRate", align: "right", showFrom: "wide", render: (row) => rate(row.fulfillment) },
     {
       key: "avgApprovalHours",
       header: t("เวลาอนุมัติเฉลี่ย", "ເວລາອະນຸມັດສະເລ່ຍ", "Avg. time to approve"),
       sortKey: "avgApprovalHours",
       align: "right",
+      showFrom: "wide",
       render: (row) => (row.avgApprovalHours === null ? <span className="text-slate-400">-</span> : `${row.avgApprovalHours} ${t("ชม.", "ຊມ.", "h")}`),
     },
   ];
@@ -99,12 +101,13 @@ export default async function SummaryReportPage({ searchParams }: { searchParams
   const presets = summaryPresets(now);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-3">
       <ReportToolbar
         total={result.rows.length}
         submitLabel={t("แสดงผล", "ສະແດງຜົນ", "Show")}
         preserve={{ sort: sorted.sort, dir: sorted.dir }}
         hasFilters={false}
+        filtersOpen
         clearHref={PATH}
         actions={
           <div className="flex flex-wrap gap-2" role="group" aria-label={t("ช่วงเวลาที่ใช้บ่อย", "ໄລຍະເວລາທີ່ໃຊ້ເລື້ອຍ", "Common ranges")}>

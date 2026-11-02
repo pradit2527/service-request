@@ -19,7 +19,7 @@ import { isAdmin } from "@/lib/permissions";
 import { buildReportHref, parseUserReportParams } from "@/lib/report-params";
 import { getUserReportRecord, listUserReport, type UserReportRow } from "@/lib/report-queries";
 import type { Tone } from "@/lib/status";
-import { btnPrimary, btnSecondary, inputClass, labelClass } from "@/lib/ui";
+import { btnPrimary, btnSecondary, btnTiny, inputClass, labelClass } from "@/lib/ui";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getI18n();
@@ -69,7 +69,7 @@ export default async function UserReportPage({ searchParams }: { searchParams: P
     {
       key: "department",
       header: t("แผนก", "ພະແນກ", "Department"),
-      showFrom: "xl",
+      showFrom: "wide",
       render: (row) => row.department ?? <span className="text-slate-400">-</span>,
     },
     {
@@ -88,33 +88,34 @@ export default async function UserReportPage({ searchParams }: { searchParams: P
       key: "lastLogin",
       header: t("เข้าสู่ระบบล่าสุด", "ເຂົ້າສູ່ລະບົບຫຼ້າສຸດ", "Last sign-in"),
       sortKey: "lastLoginAt",
-      showFrom: "xl",
+      showFrom: "wider",
       render: (row) => (row.lastLoginAt ? formatDateTime(row.lastLoginAt, lang) : <span className="text-slate-400">{never}</span>),
     },
     {
       key: "requests",
       header: t("คำขอที่ยื่น", "ຄຳຂໍທີ່ຍື່ນ", "Requests filed"),
       align: "right",
-      showFrom: "xl",
+      showFrom: "wider",
       render: (row) => formatNumber(row.requestCount, lang),
     },
     {
       key: "createdAt",
       header: t("วันที่เพิ่ม", "ວັນທີເພີ່ມ", "Added"),
       sortKey: "createdAt",
-      showFrom: "2xl",
+      showFrom: "widest",
       render: (row) => formatDateTime(row.createdAt, lang),
     },
   ];
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-3">
       <ReportToolbar
         total={report.total}
         q={params.q}
         searchPlaceholder={t("ค้นหาชื่อ อีเมล หรือแผนก", "ຄົ້ນຫາຊື່, ອີເມວ ຫຼື ພະແນກ", "Search by name, email or department")}
         preserve={{ sort: sorted.sort, dir: sorted.dir }}
         hasFilters={hasFilters}
+        filterCount={[params.role, params.status, params.login].filter(Boolean).length}
         clearHref={PATH}
         actions={
           <Link href={hrefFor({ new: "1" })} scroll={false} className={btnPrimary}>
@@ -161,7 +162,7 @@ export default async function UserReportPage({ searchParams }: { searchParams: P
         actionsHeader={t("จัดการ", "ຈັດການ", "Actions")}
         actions={(row) => (
           <>
-            <Link href={hrefFor({ edit: row.id })} scroll={false} className={btnSecondary}>
+            <Link href={hrefFor({ edit: row.id })} scroll={false} className={`${btnSecondary} ${btnTiny}`}>
               {t("แก้ไข", "ແກ້ໄຂ", "Edit")}
             </Link>
             {row.id !== actor.id && (
@@ -170,6 +171,7 @@ export default async function UserReportPage({ searchParams }: { searchParams: P
                 fields={{ userId: row.id, returnTo: closeHref }}
                 label={t("ลบ", "ລຶບ", "Delete")}
                 pendingLabel={t("กำลังลบ...", "ກຳລັງລຶບ...", "Deleting...")}
+                compact
                 confirmText={t(
                   `ยืนยันการลบ ${row.email} อย่างถาวร? ลบได้เฉพาะผู้ใช้ที่ไม่มีประวัติการใช้งาน`,
                   `ຢືນຢັນການລຶບ ${row.email} ຖາວອນບໍ? ລຶບໄດ້ສະເພາະຜູ້ໃຊ້ທີ່ບໍ່ມີປະຫວັດການໃຊ້ງານ`,
