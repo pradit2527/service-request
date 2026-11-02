@@ -254,8 +254,8 @@ export async function addComment(_prev: ActionState, formData: FormData): Promis
   if (!parsed.success) return { fieldErrors: firstIssuePerField(parsed.error) };
   const { requestId, body } = parsed.data;
 
-  const request = await db.serviceRequest.findUnique({
-    where: { id: requestId },
+  const request = await db.serviceRequest.findFirst({
+    where: { id: requestId, deletedAt: null },
     select: { id: true, requesterId: true, approverId: true, status: true, ...slaFields },
   });
   if (!request || !canViewRequest(user, request)) return { error: notFoundMessage(t) };
@@ -335,8 +335,8 @@ export async function changeStatus(_prev: ActionState, formData: FormData): Prom
   if (!parsed.success) return { fieldErrors: firstIssuePerField(parsed.error) };
   const { requestId, to, note } = parsed.data;
 
-  const request = await db.serviceRequest.findUnique({
-    where: { id: requestId },
+  const request = await db.serviceRequest.findFirst({
+    where: { id: requestId, deletedAt: null },
     select: { id: true, requesterId: true, status: true, assigneeId: true, ...slaFields },
   });
   if (!request) return { error: notFoundMessage(t) };
@@ -426,8 +426,8 @@ export async function assignRequest(_prev: ActionState, formData: FormData): Pro
   if (!parsed.success) return { error: t("ข้อมูลไม่ถูกต้อง", "ຂໍ້ມູນບໍ່ຖືກຕ້ອງ", "Invalid data") };
   const { requestId, assigneeId } = parsed.data;
 
-  const request = await db.serviceRequest.findUnique({
-    where: { id: requestId },
+  const request = await db.serviceRequest.findFirst({
+    where: { id: requestId, deletedAt: null },
     select: { id: true, status: true, firstResponseAt: true, assigneeId: true, assignee: { select: { name: true } } },
   });
   if (!request) return { error: notFoundMessage(t) };
@@ -479,8 +479,8 @@ export async function reassignApprover(_prev: ActionState, formData: FormData): 
   const requestId = String(formData.get("requestId") ?? "");
   const approverId = String(formData.get("approverId") ?? "");
 
-  const request = await db.serviceRequest.findUnique({
-    where: { id: requestId },
+  const request = await db.serviceRequest.findFirst({
+    where: { id: requestId, deletedAt: null },
     select: { id: true, status: true, requesterId: true, approver: { select: { name: true } } },
   });
   if (!request) return { error: notFoundMessage(t) };
@@ -538,8 +538,8 @@ export async function changeSlaTier(_prev: ActionState, formData: FormData): Pro
   if (!parsed.success) return { error: t("ข้อมูลไม่ถูกต้อง", "ຂໍ້ມູນບໍ່ຖືກຕ້ອງ", "Invalid data") };
   const { requestId, tier } = parsed.data;
 
-  const request = await db.serviceRequest.findUnique({
-    where: { id: requestId },
+  const request = await db.serviceRequest.findFirst({
+    where: { id: requestId, deletedAt: null },
     select: { id: true, status: true, slaTier: true, createdAt: true, firstResponseAt: true, slaPausedMinutes: true },
   });
   if (!request) return { error: notFoundMessage(t) };
@@ -609,8 +609,8 @@ export async function decideByManager(_prev: ActionState, formData: FormData): P
   }
   const { requestId, decision, note } = parsed.data;
 
-  const request = await db.serviceRequest.findUnique({
-    where: { id: requestId },
+  const request = await db.serviceRequest.findFirst({
+    where: { id: requestId, deletedAt: null },
     select: { id: true, requesterId: true, approverId: true, status: true, ...slaFields },
   });
   if (!request || !canViewRequest(user, request)) return { error: notFoundMessage(t) };
@@ -678,8 +678,8 @@ export async function cancelRequest(_prev: ActionState, formData: FormData): Pro
   const user = await requireUser();
   const requestId = String(formData.get("requestId") ?? "");
 
-  const request = await db.serviceRequest.findUnique({
-    where: { id: requestId },
+  const request = await db.serviceRequest.findFirst({
+    where: { id: requestId, deletedAt: null },
     select: { id: true, requesterId: true, approverId: true, status: true },
   });
   if (!request || !canViewRequest(user, request)) return { error: notFoundMessage(t) };

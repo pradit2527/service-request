@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, CircleCheck } from "lucide-react";
+import { ArrowLeft, CircleCheck, Trash2 } from "lucide-react";
 import { Avatar } from "@/components/avatar";
 import { Badge, StatusBadge } from "@/components/badges";
 import { CancelButton } from "@/components/cancel-button";
@@ -67,6 +67,19 @@ export default async function RequestDetailPage({
         <ArrowLeft className="h-4 w-4" aria-hidden />
         {t("กลับไปรายการคำขอ", "ກັບໄປລາຍການຄຳຂໍ", "Back to requests")}
       </Link>
+
+      {request.deletedAt && (
+        <div className="flex gap-3 rounded-2xl bg-amber-50 p-4 text-sm text-amber-900 ring-1 ring-amber-200 ring-inset" role="status">
+          <Trash2 className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
+          <p>
+            {t(
+              `คำขอนี้ถูกลบโดย ${request.deletedBy?.name ?? "-"} เมื่อ ${formatDateTime(request.deletedAt, lang)} คนอื่นมองไม่เห็นคำขอนี้ และกู้คืนได้จากเมนูจัดการระบบ`,
+              `ຄຳຂໍນີ້ຖືກລຶບໂດຍ ${request.deletedBy?.name ?? "-"} ເມື່ອ ${formatDateTime(request.deletedAt, lang)} ຄົນອື່ນບໍ່ເຫັນຄຳຂໍນີ້ ແລະ ກູ້ຄືນໄດ້ຈາກເມນູຈັດການລະບົບ`,
+              `This request was deleted by ${request.deletedBy?.name ?? "-"} on ${formatDateTime(request.deletedAt, lang)}. Nobody else can see it, and it can be restored from system management.`,
+            )}
+          </p>
+        </div>
+      )}
 
       {showCreatedBanner && (
         <div className="flex gap-3 rounded-2xl bg-linear-to-r from-emerald-50 to-teal-50 p-4 ring-1 ring-emerald-200 ring-inset motion-safe:animate-fade-up" role="status">
@@ -140,7 +153,7 @@ export default async function RequestDetailPage({
             <RequestTimeline request={request} />
           </section>
 
-          {canComment(user, request) ? (
+          {request.deletedAt ? null : canComment(user, request) ? (
             <section className={`${cardClass} p-4`}>
               <h2 className="mb-2 font-semibold text-slate-900">{t("เพิ่มข้อความ", "ເພີ່ມຂໍ້ຄວາມ", "Add a message")}</h2>
               <CommentForm requestId={request.id} canPostInternal={canPostInternalNote(user)} />
@@ -151,7 +164,7 @@ export default async function RequestDetailPage({
         </div>
 
         <aside className="min-w-0 space-y-4">
-          {canDecideAsManager(user, request) && <ManagerDecision requestId={request.id} />}
+          {!request.deletedAt && canDecideAsManager(user, request) && <ManagerDecision requestId={request.id} />}
 
           <section className={`${cardClass} p-4`}>
             <h2 className="mb-4 font-semibold text-slate-900">{t("ข้อมูลคำขอ", "ຂໍ້ມູນຄຳຂໍ", "Request information")}</h2>
@@ -197,7 +210,7 @@ export default async function RequestDetailPage({
 
           <SlaPanel request={request} />
 
-          {staff && (
+          {staff && !request.deletedAt && (
             <StaffPanel
               requestId={request.id}
               status={request.status}
@@ -211,7 +224,7 @@ export default async function RequestDetailPage({
             />
           )}
 
-          {canCancelRequest(user, request) && (
+          {!request.deletedAt && canCancelRequest(user, request) && (
             <section className={`${cardClass} p-4`}>
               <h2 className="mb-1 font-semibold text-slate-900">{t("ยกเลิกคำขอ", "ຍົກເລີກຄຳຂໍ", "Cancel request")}</h2>
               <p className="mb-3 text-xs text-slate-500">{t("ยกเลิกได้จนกว่าทีม IT จะเริ่มดำเนินการ", "ຍົກເລີກໄດ້ຈົນກວ່າທີມ IT ຈະເລີ່ມດຳເນີນການ", "You can cancel until the IT team starts the work")}</p>

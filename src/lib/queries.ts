@@ -5,7 +5,7 @@ import "server-only";
 import type { Prisma } from "@prisma/client";
 import { db } from "./db";
 import { isKbCategory } from "./kb";
-import { canViewRequest, isStaff, type Viewer } from "./permissions";
+import { canManageSystem, canViewRequest, isStaff, type Viewer } from "./permissions";
 import type { RequestType } from "./request-types";
 import { evaluateSla, startOfMonthBangkok, tally, type PassRate, type SlaSubject } from "./sla";
 import { getSlaCalendar } from "./sla-calendar";
@@ -32,6 +32,7 @@ const rowSelect = {
   fulfillmentDueAt: true,
   closedAt: true,
   slaPausedAt: true,
+  deletedAt: true,
   requester: { select: { name: true } },
   assignee: { select: { name: true } },
 } satisfies Prisma.ServiceRequestSelect;
@@ -45,6 +46,10 @@ export type ListFilters = {
   scope?: "assigned" | "unassigned";
   sla?: "breached";
   page?: number;
+  /** System management: every request (not only the viewer's own), if the viewer may manage the system. */
+  console?: boolean;
+  /** With `console`: also show deleted requests ("include") or only those ("only"). Ignored otherwise. */
+  deleted?: "include" | "only";
 };
 
 /** Requests whose response or fulfillment deadline has passed while the clock was running. */
@@ -58,11 +63,16 @@ function breachedWhere(now: Date): Prisma.ServiceRequestWhereInput {
 
 export async function listRequests(viewer: Viewer, filters: ListFilters) {
   const staff = isStaff(viewer);
+  const manage = filters.console === true && canManageSystem(viewer);
   const and: Prisma.ServiceRequestWhereInput[] = [];
 
-  if (!staff) and.push({ OR: [{ requesterId: viewer.id }, { approverId: viewer.id }] });
-  else if (filters.scope === "assigned") and.push({ assigneeId: viewer.id });
-  else if (filters.scope === "unassigned") and.push({ assigneeId: null });
+  // Deleted requests are hidden from everybody except in system management.
+  if (manage && filters.deleted === "only") and.push({ deletedAt: { not: null } });
+  else if (!(manage && filters.deleted === "include")) and.push({ deletedAt: null });
+
+  if (!staff && !manage) and.push({ OR: [{ requesterId: viewer.id }, { approverId: viewer.id }] });
+  else if (staff && filters.scope === "assigned") and.push({ assigneeId: viewer.id });
+  else if (staff && filters.scope === "unassigned") and.push({ assigneeId: null });
 
   if (staff && filters.sla === "breached") and.push(breachedWhere(new Date()));
 
@@ -79,7 +89,7 @@ export async function listRequests(viewer: Viewer, filters: ListFilters) {
       OR: [
         { requestNo: contains },
         { title: contains },
-        ...(staff ? [{ requester: { name: contains } }, { requester: { email: contains } }] : []),
+        ...(staff || manage ? [{ requester: { name: contains } }, { requester: { email: contains } }] : []),
       ],
     });
   }
@@ -109,6 +119,7 @@ export async function getRequestDetail(viewer: Viewer, id: string) {
       assignee: { select: { id: true, name: true } },
       approver: { select: { id: true, name: true, department: true } },
       decidedBy: { select: { name: true } },
+      deletedBy: { select: { name: true } },
       comments: {
         where: staff ? {} : { isInternal: false },
         orderBy: { createdAt: "asc" },
@@ -121,6 +132,8 @@ export async function getRequestDetail(viewer: Viewer, id: string) {
     },
   });
   if (!request || !canViewRequest(viewer, request)) return null;
+  // A deleted request can still be opened from system management, to restore it.
+  if (request.deletedAt && !canManageSystem(viewer)) return null;
   return request;
 }
 
@@ -145,18 +158,18 @@ export function listApprovers(excludeUserId: string) {
 
 export function listPendingApprovals(userId: string) {
   return db.serviceRequest.findMany({
-    where: { approverId: userId, status: "PENDING_APPROVAL" },
+    where: { approverId: userId, status: "PENDING_APPROVAL", deletedAt: null },
     select: rowSelect,
     orderBy: { createdAt: "asc" },
   });
 }
 
 export function countPendingApprovals(userId: string) {
-  return db.serviceRequest.count({ where: { approverId: userId, status: "PENDING_APPROVAL" } });
+  return db.serviceRequest.count({ where: { approverId: userId, status: "PENDING_APPROVAL", deletedAt: null } });
 }
 
 export async function getEmployeeDashboard(viewer: Viewer) {
-  const mine: Prisma.ServiceRequestWhereInput = { requesterId: viewer.id };
+  const mine: Prisma.ServiceRequestWhereInput = { requesterId: viewer.id, deletedAt: null };
   const [grouped, recent] = await Promise.all([
     db.serviceRequest.groupBy({ by: ["status"], where: mine, _count: { _all: true } }),
     db.serviceRequest.findMany({ where: mine, select: rowSelect, orderBy: { createdAt: "desc" }, take: 6 }),
@@ -170,7 +183,7 @@ const MY_TASK_STATUSES: RequestStatus[] = ["IN_REVIEW", "NEED_INFO", "ON_HOLD", 
 /** The open requests assigned to this IT person, most recently touched first. */
 export function listMyTasks(userId: string) {
   return db.serviceRequest.findMany({
-    where: { assigneeId: userId, status: { in: MY_TASK_STATUSES } },
+    where: { assigneeId: userId, status: { in: MY_TASK_STATUSES }, deletedAt: null },
     select: rowSelect,
     orderBy: { updatedAt: "desc" },
     take: 200,
@@ -178,15 +191,15 @@ export function listMyTasks(userId: string) {
 }
 
 export function countMyTasks(userId: string) {
-  return db.serviceRequest.count({ where: { assigneeId: userId, status: { in: MY_TASK_STATUSES } } });
+  return db.serviceRequest.count({ where: { assigneeId: userId, status: { in: MY_TASK_STATUSES }, deletedAt: null } });
 }
 
 export async function getStaffDashboard() {
   const [grouped, unassigned, queue] = await Promise.all([
-    db.serviceRequest.groupBy({ by: ["status"], _count: { _all: true } }),
-    db.serviceRequest.count({ where: { assigneeId: null, status: { in: ["SUBMITTED", "IN_REVIEW"] } } }),
+    db.serviceRequest.groupBy({ by: ["status"], where: { deletedAt: null }, _count: { _all: true } }),
+    db.serviceRequest.count({ where: { assigneeId: null, status: { in: ["SUBMITTED", "IN_REVIEW"] }, deletedAt: null } }),
     db.serviceRequest.findMany({
-      where: { status: "SUBMITTED" },
+      where: { status: "SUBMITTED", deletedAt: null },
       select: rowSelect,
       orderBy: { createdAt: "asc" },
       take: 8,
@@ -231,8 +244,8 @@ export async function getSlaOverview(now: Date = new Date()): Promise<SlaOvervie
   const monthStart = startOfMonthBangkok(now, cal);
 
   const [open, month] = await Promise.all([
-    db.serviceRequest.findMany({ where: { status: { in: OPEN_STATUSES } }, select: slaSelect }),
-    db.serviceRequest.findMany({ where: { createdAt: { gte: monthStart } }, select: slaSelect }),
+    db.serviceRequest.findMany({ where: { status: { in: OPEN_STATUSES }, deletedAt: null }, select: slaSelect }),
+    db.serviceRequest.findMany({ where: { createdAt: { gte: monthStart }, deletedAt: null }, select: slaSelect }),
   ]);
 
   let breachedOpen = 0;

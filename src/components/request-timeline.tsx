@@ -1,6 +1,7 @@
 import { ArrowRightLeft, FilePlus2, Gauge, Pencil, ShieldCheck, Trash2, Undo2, UserCheck, UserCog, type LucideIcon } from "lucide-react";
 import type { Translate } from "@/lib/i18n";
 import { getI18n } from "@/lib/i18n-server";
+import { EDITABLE_REQUEST_FIELDS, REQUEST_EDIT_FIELD_LABEL } from "@/lib/admin-rules";
 import { ROLE_LABEL, formatDateTime } from "@/lib/labels";
 import type { RequestDetail } from "@/lib/queries";
 import { STATUS_LABEL, isValidStatus } from "@/lib/status";
@@ -18,10 +19,21 @@ function statusText(value: string | null, t: Translate): string {
   return isValidStatus(value) ? t(STATUS_LABEL[value]) : value;
 }
 
+function isEditableField(key: string): key is (typeof EDITABLE_REQUEST_FIELDS)[number] {
+  return (EDITABLE_REQUEST_FIELDS as readonly string[]).includes(key);
+}
+
 function describeEvent(event: Event, t: Translate): { text: string; icon: LucideIcon; tone: string } {
   switch (event.action) {
     case "CREATED":
-      return { text: t("สร้างคำขอ", "ສ້າງຄຳຂໍ", "created the request"), icon: FilePlus2, tone: "bg-indigo-100 text-indigo-600" };
+      return {
+        // `fromValue` holds the requester's name when a manager or administrator created it for them.
+        text: event.fromValue
+          ? t(`สร้างคำขอแทน ${event.fromValue}`, `ສ້າງຄຳຂໍແທນ ${event.fromValue}`, `created the request on behalf of ${event.fromValue}`)
+          : t("สร้างคำขอ", "ສ້າງຄຳຂໍ", "created the request"),
+        icon: FilePlus2,
+        tone: "bg-indigo-100 text-indigo-600",
+      };
     case "STATUS_CHANGED":
       if (event.fromValue === "PENDING_APPROVAL" && event.toValue === "SUBMITTED") {
         return {
@@ -75,16 +87,18 @@ function describeEvent(event: Event, t: Translate): { text: string; icon: Lucide
         icon: UserCog,
         tone: "bg-slate-200 text-slate-600",
       };
-    case "EDITED":
+    case "EDITED": {
+      const fields = (event.toValue ?? "")
+        .split(",")
+        .filter(Boolean)
+        .map((key) => (isEditableField(key) ? t(REQUEST_EDIT_FIELD_LABEL[key]) : key))
+        .join(", ");
       return {
-        text: t(
-          `แก้ไขข้อมูลคำขอ (${event.toValue ?? "-"})`,
-          `ແກ້ໄຂຂໍ້ມູນຄຳຂໍ (${event.toValue ?? "-"})`,
-          `edited the request (${event.toValue ?? "-"})`,
-        ),
+        text: t(`แก้ไขข้อมูลคำขอ (${fields})`, `ແກ້ໄຂຂໍ້ມູນຄຳຂໍ (${fields})`, `edited the request (${fields})`),
         icon: Pencil,
         tone: "bg-slate-200 text-slate-600",
       };
+    }
     case "DELETED":
       return { text: t("ลบคำขอ", "ລຶບຄຳຂໍ", "deleted the request"), icon: Trash2, tone: "bg-red-100 text-red-600" };
     case "RESTORED":
