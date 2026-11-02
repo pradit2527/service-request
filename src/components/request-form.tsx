@@ -4,9 +4,8 @@ import Link from "next/link";
 import { useActionState, useState } from "react";
 import { CalendarClock, Gauge, ShieldCheck, TriangleAlert, UserRound, Users } from "lucide-react";
 import { createRequest } from "@/app/actions/requests";
-import { APPROVAL_REASON, OWN_REQUEST_NOTE, requiresManagerApproval } from "@/lib/approval";
+import { APPROVAL_REASON, OWN_REQUEST_NOTE } from "@/lib/approval";
 import { useLang, useT } from "@/components/lang-provider";
-import type { Role } from "@/lib/labels";
 import { visibleFieldNames, type FieldDef, type RequestType } from "@/lib/request-types";
 import {
   DEFAULT_CALENDAR,
@@ -74,12 +73,10 @@ function SectionTitle({ n, title, hint }: { n: number; title: string; hint?: str
 }
 
 type Approver = { id: string; name: string; department: string | null };
-export type RequesterOption = { id: string; name: string; department: string | null; phone: string | null; role: Role };
 
 /**
- * `requesters` and `selfId` are passed only to administrators and managers, who can file a request on behalf
- * of someone else. Then `approvers` lists every manager (the form leaves out whoever is the requester) and
- * `needsApproval` is the answer for filing as yourself.
+ * The requester is always the person who is signed in. `approvers` are the managers who can approve for them (never
+ * the requester) and `needsApproval` says whether the request has to go to one.
  */
 export function RequestForm({
   type,
@@ -89,8 +86,6 @@ export function RequestForm({
   holidays,
   today,
   requester,
-  requesters,
-  selfId,
 }: {
   type: RequestType;
   fields: FieldDef[];
@@ -99,22 +94,11 @@ export function RequestForm({
   holidays: string[];
   today: string;
   requester: { name: string; department: string | null; phone: string | null };
-  requesters?: RequesterOption[];
-  selfId?: string;
 }) {
   const t = useT();
   const lang = useLang();
   const [state, action, pending] = useActionState(createRequest, undefined);
   const errors = state?.fieldErrors ?? {};
-  const [requesterId, setRequesterId] = useState("");
-  const filingFor = requesters?.find((r) => r.id === requesterId);
-  const approversFor = (id: string) => {
-    const excluded = id || selfId;
-    return excluded ? approvers.filter((a) => a.id !== excluded) : approvers;
-  };
-  const approverOptions = approversFor(requesterId);
-  const needs = filingFor ? requiresManagerApproval(filingFor, approverOptions.length) : needsApproval;
-  const shownRequester = filingFor ?? requester;
 
   // Controlled values: they survive a failed submit and drive the conditional fields and live SLA summary.
   const [core, setCore] = useState({
@@ -124,16 +108,8 @@ export function RequestForm({
     forWhom: "self" as "self" | "other",
     requestedForName: "",
     // With only one approving manager there is nothing to choose, so he is already selected.
-    approverId: approverOptions.length === 1 ? approverOptions[0].id : "",
+    approverId: approvers.length === 1 ? approvers[0].id : "",
   });
-  const chooseRequester = (id: string) => {
-    setRequesterId(id);
-    const options = approversFor(id);
-    setCore((c) => ({
-      ...c,
-      approverId: options.length === 1 ? options[0].id : options.some((a) => a.id === c.approverId) ? c.approverId : "",
-    }));
-  };
   const [details, setDetails] = useState<Record<string, string>>({});
 
   const visible = visibleFieldNames(type, details);
@@ -159,44 +135,16 @@ export function RequestForm({
           {/* 1. Requester */}
           <section className={`${cardClass} p-5 sm:p-6`}>
             <SectionTitle n={1} title={t("ข้อมูลผู้ยื่นคำขอ", "ຂໍ້ມູນຜູ້ຍື່ນຄຳຂໍ", "Requester details")} />
-            {requesters && (
-              <div className="mb-4">
-                <Field
-                  id="requesterId"
-                  label={t("ยื่นคำขอในนามของ", "ຍື່ນຄຳຂໍໃນນາມຂອງ", "File this request for")}
-                  help={t(
-                    "เลือกผู้ใช้เพื่อยื่นคำขอแทน ระบบจะบันทึกว่าคุณเป็นผู้สร้าง และหัวหน้าจะอนุมัติตามผู้ขอที่เลือก",
-                    "ເລືອກຜູ້ໃຊ້ເພື່ອຍື່ນຄຳຂໍແທນ ລະບົບຈະບັນທຶກວ່າທ່ານເປັນຜູ້ສ້າງ ແລະ ຫົວໜ້າຈະອະນຸມັດຕາມຜູ້ຂໍທີ່ເລືອກ",
-                    "Pick a user to file the request for them. The system records that you created it, and the approval follows the person you pick.",
-                  )}
-                  error={errors.requesterId}
-                >
-                  {(a11y) => (
-                    <select {...a11y} value={requesterId} onChange={(e) => chooseRequester(e.target.value)}>
-                      <option value="">{t("ตัวฉันเอง", "ຕົວຂ້ອຍເອງ", "Myself")}</option>
-                      {requesters
-                        .filter((r) => r.id !== selfId)
-                        .map((r) => (
-                          <option key={r.id} value={r.id}>
-                            {r.name}
-                            {r.department ? ` (${r.department})` : ""}
-                          </option>
-                        ))}
-                    </select>
-                  )}
-                </Field>
-              </div>
-            )}
             <div className="flex items-center gap-3 rounded-2xl bg-slate-50 p-3.5">
-              <Avatar name={shownRequester.name} size="md" />
+              <Avatar name={requester.name} size="md" />
               <div className="min-w-0 leading-tight">
-                <p className="truncate font-medium text-slate-900">{shownRequester.name}</p>
+                <p className="truncate font-medium text-slate-900">{requester.name}</p>
                 <p className="truncate text-xs text-slate-500">
-                  {shownRequester.department ?? t("ยังไม่ระบุแผนก", "ຍັງບໍ່ໄດ້ລະບຸພະແນກ", "Department not set")} ·{" "}
-                  {shownRequester.phone ?? t("ยังไม่ระบุเบอร์โทร", "ຍັງບໍ່ໄດ້ລະບຸເບີໂທ", "Phone not set")}
+                  {requester.department ?? t("ยังไม่ระบุแผนก", "ຍັງບໍ່ໄດ້ລະບຸພະແນກ", "Department not set")} ·{" "}
+                  {requester.phone ?? t("ยังไม่ระบุเบอร์โทร", "ຍັງບໍ່ໄດ້ລະບຸເບີໂທ", "Phone not set")}
                 </p>
               </div>
-              {!filingFor && (!requester.department || !requester.phone) && (
+              {(!requester.department || !requester.phone) && (
                 <Link href="/profile" className="ml-auto shrink-0 text-xs font-medium text-indigo-600 hover:underline">
                   {t("เพิ่มข้อมูลติดต่อ", "ເພີ່ມຂໍ້ມູນຕິດຕໍ່", "Add contact details")}
                 </Link>
@@ -417,14 +365,14 @@ export function RequestForm({
           </section>
 
           {/* 4. Approver */}
-          {needs && (
+          {needsApproval && (
             <section className={`${cardClass} p-5 sm:p-6`}>
               <SectionTitle
                 n={fields.length > 0 ? 4 : 3}
                 title={t("ผู้อนุมัติ (หัวหน้างาน)", "ຜູ້ອະນຸມັດ (ຫົວໜ້າ)", "Approver (manager)")}
                 hint={t(APPROVAL_REASON)}
               />
-              {approverOptions.length === 0 ? (
+              {approvers.length === 0 ? (
                 <p className="flex gap-2.5 rounded-xl bg-amber-50 px-3.5 py-3 text-sm text-amber-800 ring-1 ring-amber-200 ring-inset">
                   <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
                   {t(
@@ -439,7 +387,7 @@ export function RequestForm({
                     {(a11y) => (
                       <select {...a11y} value={core.approverId} onChange={(e) => setCore((c) => ({ ...c, approverId: e.target.value }))}>
                         <option value="">{t("— เลือกหัวหน้างาน —", "— ເລືອກຫົວໜ້າ —", "— Select a manager —")}</option>
-                        {approverOptions.map((a) => (
+                        {approvers.map((a) => (
                           <option key={a.id} value={a.id}>
                             {a.name}
                             {a.department ? ` (${a.department})` : ""}
@@ -461,16 +409,10 @@ export function RequestForm({
             </section>
           )}
 
-          {!needs && (
+          {!needsApproval && (
             <p className="flex gap-2.5 rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-800 ring-1 ring-emerald-200 ring-inset">
               <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-              {filingFor
-                ? t(
-                    "ผู้ขอที่เลือกเป็นผู้อนุมัติและยังไม่มีหัวหน้าคนอื่น คำขอนี้จึงส่งถึงทีม IT โดยตรง",
-                    "ຜູ້ຂໍທີ່ເລືອກເປັນຜູ້ອະນຸມັດ ແລະ ຍັງບໍ່ມີຫົວໜ້າຄົນອື່ນ ຄຳຂໍນີ້ຈຶ່ງສົ່ງຫາທີມ IT ໂດຍກົງ",
-                    "The selected requester is the approver and there is no other manager, so this request goes straight to the IT team",
-                  )
-                : t(OWN_REQUEST_NOTE)}
+              {t(OWN_REQUEST_NOTE)}
             </p>
           )}
         </div>
@@ -491,7 +433,7 @@ export function RequestForm({
           </Link>
           <button
             type="submit"
-            disabled={pending || (needs && approverOptions.length === 0)}
+            disabled={pending || (needsApproval && approvers.length === 0)}
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-linear-to-r from-emerald-500 to-teal-500 px-5 py-2.5 text-sm font-semibold whitespace-nowrap text-white shadow-md shadow-emerald-500/25 transition hover:from-emerald-400 hover:to-teal-400 disabled:cursor-not-allowed disabled:opacity-60 enabled:active:scale-[0.98]"
           >
             {pending ? t("กำลังส่งคำขอ...", "ກຳລັງສົ່ງຄຳຂໍ...", "Submitting...") : t("ส่งคำขอบริการ", "ສົ່ງຄຳຂໍບໍລິການ", "Submit request")}

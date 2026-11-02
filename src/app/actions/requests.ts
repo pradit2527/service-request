@@ -10,13 +10,12 @@ import { requireStaff, requireUser } from "@/lib/dal";
 import { db } from "@/lib/db";
 import type { Translate } from "@/lib/i18n";
 import { getI18n } from "@/lib/i18n-server";
-import { formatDate, type Role } from "@/lib/labels";
+import { formatDate } from "@/lib/labels";
 import {
   allowedStatusChanges,
   canCancelRequest,
   canComment,
   canDecideAsManager,
-  canManageSystem,
   canPostInternalNote,
   canViewRequest,
   isStaff,
@@ -116,16 +115,6 @@ export async function createRequest(_prev: ActionState, formData: FormData): Pro
   const { t, lang } = await getI18n();
   const user = await requireUser();
 
-  // An administrator or manager can file the request on behalf of someone else (the "requesterId" field).
-  let requester: { id: string; name: string; role: Role } = { id: user.id, name: user.name, role: user.role };
-  const onBehalfId = canManageSystem(user) ? String(formData.get("requesterId") ?? "") : "";
-  let requesterMissing = false;
-  if (onBehalfId && onBehalfId !== user.id) {
-    const found = await db.user.findFirst({ where: { id: onBehalfId, isActive: true }, select: { id: true, name: true, role: true } });
-    if (found) requester = found;
-    else requesterMissing = true;
-  }
-
   const type = formData.get("type");
   if (!isRequestType(type)) return { error: t("ประเภทคำขอไม่ถูกต้อง", "ປະເພດຄຳຂໍບໍ່ຖືກຕ້ອງ", "Invalid request type") };
 
@@ -138,7 +127,6 @@ export async function createRequest(_prev: ActionState, formData: FormData): Pro
     approverId: formData.get("approverId") ?? "",
   });
   const fieldErrors: Record<string, string> = core.success ? {} : firstIssuePerField(core.error);
-  if (requesterMissing) fieldErrors.requesterId = t("ไม่พบผู้ขอที่เลือก", "ບໍ່ພົບຜູ້ຂໍທີ່ເລືອກ", "The selected requester was not found");
 
   const raw: Record<string, string> = {};
   for (const field of REQUEST_TYPE_DEFS[type].fields) raw[field.name] = String(formData.get(`d_${field.name}`) ?? "");
@@ -147,8 +135,8 @@ export async function createRequest(_prev: ActionState, formData: FormData): Pro
 
   const cal = getSlaCalendar();
   const tier = classifyTier(type, details.values);
-  const otherApprovers = await db.user.count({ where: { isActive: true, role: "MANAGER", NOT: { id: requester.id } } });
-  const needsApproval = requiresManagerApproval(requester, otherApprovers);
+  const otherApprovers = await db.user.count({ where: { isActive: true, role: "MANAGER", NOT: { id: user.id } } });
+  const needsApproval = requiresManagerApproval(user, otherApprovers);
 
   if (core.success) {
     const { neededBy, forWhom, requestedForName, approverId } = core.data;
@@ -183,7 +171,7 @@ export async function createRequest(_prev: ActionState, formData: FormData): Pro
     if (needsApproval) {
       const approver = approverId
         ? await db.user.findFirst({
-            where: { id: approverId, isActive: true, role: "MANAGER", NOT: { id: requester.id } },
+            where: { id: approverId, isActive: true, role: "MANAGER", NOT: { id: user.id } },
             select: { id: true },
           })
         : null;
@@ -222,7 +210,7 @@ export async function createRequest(_prev: ActionState, formData: FormData): Pro
         details: details.values,
         neededBy: new Date(`${neededBy}T00:00:00Z`),
         requestedForName: forWhom === "other" ? requestedForName : null,
-        requesterId: requester.id,
+        requesterId: user.id,
         approverId: needsApproval ? approverId : null,
         createdAt: now,
         slaTier: tier,
@@ -230,12 +218,10 @@ export async function createRequest(_prev: ActionState, formData: FormData): Pro
         fulfillmentDueAt: due.fulfillmentDueAt,
         // The clock only starts once the manager has approved.
         slaPausedAt: needsApproval ? now : null,
-        // "fromValue" holds the requester's name when someone filed the request for them.
         events: {
           create: {
             actorId: user.id,
             action: "CREATED",
-            fromValue: requester.id === user.id ? null : requester.name,
             toValue: status,
             createdAt: now,
           },

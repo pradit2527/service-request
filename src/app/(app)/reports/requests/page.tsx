@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Plus } from "lucide-react";
 import { deleteRequest, restoreRequest } from "@/app/actions/admin-requests";
 import { Avatar } from "@/components/avatar";
 import { Badge, PriorityBadge, StatusBadge } from "@/components/badges";
@@ -22,7 +21,7 @@ import { CATEGORY_PREFIX, buildReportHref, parseRequestReportParams, requestRepo
 import { getRequestReportRecord, listRequestReport, type RequestReportRow } from "@/lib/report-queries";
 import { REQUEST_CATEGORIES, REQUEST_TYPE_DEFS } from "@/lib/request-types";
 import { CURRENT_STATUSES, STATUS_LABEL } from "@/lib/status";
-import { btnPrimary, btnSecondary, btnTiny, inputClass, labelClass } from "@/lib/ui";
+import { btnSecondary, btnTiny, inputClass, labelClass } from "@/lib/ui";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getI18n();
@@ -146,12 +145,6 @@ export default async function RequestReportPage({ searchParams }: { searchParams
         hasFilters={hasFilters}
         filterCount={filterCount}
         clearHref={PATH}
-        actions={
-          <Link href="/requests/new" className={btnPrimary}>
-            <Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />
-            {t("เพิ่มคำขอ (ยื่นแทนผู้อื่น)", "ເພີ່ມຄຳຂໍ (ຍື່ນແທນຜູ້ອື່ນ)", "Add a request (for someone else)")}
-          </Link>
-        }
       >
         <div className={field}>
           <label htmlFor="f-status" className={labelClass}>

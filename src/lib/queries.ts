@@ -149,15 +149,6 @@ export function listApprovers(excludeUserId: string) {
   });
 }
 
-/** Active users an administrator or manager can file a request for. */
-export function listRequesterOptions() {
-  return db.user.findMany({
-    where: { isActive: true },
-    select: { id: true, name: true, department: true, phone: true, role: true },
-    orderBy: { name: "asc" },
-  });
-}
-
 export function listPendingApprovals(userId: string) {
   return db.serviceRequest.findMany({
     where: { approverId: userId, status: "PENDING_APPROVAL", deletedAt: null },

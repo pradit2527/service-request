@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Plus, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { Badge, StatusBadge } from "@/components/badges";
 import { ConfirmActionButton } from "@/components/confirm-action-button";
 import { PaginationNav } from "@/components/pagination-nav";
@@ -48,15 +48,9 @@ export default async function AdminRequestsPage({ searchParams }: { searchParams
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-slate-500">
-          {t(`พบ ${totalText} รายการ`, `ພົບ ${totalText} ລາຍການ`, `${totalText} ${total === 1 ? "request" : "requests"} found`)}
-        </p>
-        <Link href="/requests/new" className={btnPrimary}>
-          <Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />
-          {t("สร้างคำขอแทนผู้อื่น", "ສ້າງຄຳຂໍແທນຜູ້ອື່ນ", "File a request for someone")}
-        </Link>
-      </div>
+      <p className="text-sm text-slate-500">
+        {t(`พบ ${totalText} รายการ`, `ພົບ ${totalText} ລາຍການ`, `${totalText} ${total === 1 ? "request" : "requests"} found`)}
+      </p>
 
       <form method="get" className={`${cardClass} grid gap-3 p-4 sm:grid-cols-3 lg:grid-cols-6`}>
         <div className="relative sm:col-span-3 lg:col-span-3">
