@@ -4,11 +4,13 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import type { ActionState } from "@/lib/action-state";
-import { requireStaff } from "@/lib/dal";
+import { writeAudit } from "@/lib/audit";
+import { requireKbEditor, requireSystemManager } from "@/lib/dal";
 import { db } from "@/lib/db";
 import type { Translate } from "@/lib/i18n";
 import { getI18n } from "@/lib/i18n-server";
 import { isKbCategory } from "@/lib/kb";
+import { canDeleteKb } from "@/lib/permissions";
 
 function articleSchema(t: Translate) {
   return z.object({
@@ -32,10 +34,10 @@ function articleSchema(t: Translate) {
   });
 }
 
-/** Creates or updates an article (IT staff only). An empty `id` creates a new one. */
+/** Creates or updates an article (IT staff, managers and administrators). An empty `id` creates a new one. */
 export async function saveArticle(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const { t } = await getI18n();
-  const user = await requireStaff();
+  const user = await requireKbEditor();
 
   const parsed = articleSchema(t).safeParse({
     id: formData.get("id") ?? "",
@@ -59,12 +61,68 @@ export async function saveArticle(_prev: ActionState, formData: FormData): Promi
   if (id) {
     const existing = await db.kbArticle.findUnique({ where: { id }, select: { id: true } });
     if (!existing) return { error: t("ไม่พบบทความ", "ບໍ່ພົບບົດຄວາມ", "Article not found") };
-    await db.kbArticle.update({ where: { id }, data: { ...fields, isPublished } });
+    await db.$transaction(async (tx) => {
+      await tx.kbArticle.update({ where: { id }, data: { ...fields, isPublished } });
+      await writeAudit(tx, user.id, { action: "KB_UPDATED", entity: "KB_ARTICLE", entityId: id, summary: fields.title });
+    });
   } else {
-    const created = await db.kbArticle.create({ data: { ...fields, isPublished, authorId: user.id }, select: { id: true } });
-    articleId = created.id;
+    articleId = await db.$transaction(async (tx) => {
+      const created = await tx.kbArticle.create({ data: { ...fields, isPublished, authorId: user.id }, select: { id: true } });
+      await writeAudit(tx, user.id, { action: "KB_CREATED", entity: "KB_ARTICLE", entityId: created.id, summary: fields.title });
+      return created.id;
+    });
   }
 
   revalidatePath("/kb");
+  revalidatePath("/admin/kb");
   redirect(`/kb/${articleId}`);
+}
+
+function articleNotFound(t: Translate) {
+  return t("ไม่พบบทความ", "ບໍ່ພົບບົດຄວາມ", "Article not found");
+}
+
+/** Deletes an article for good (managers and administrators). */
+export async function deleteArticle(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const { t } = await getI18n();
+  const user = await requireSystemManager();
+  if (!canDeleteKb(user)) return { error: t("คุณไม่มีสิทธิ์ลบบทความ", "ທ່ານບໍ່ມີສິດລຶບບົດຄວາມ", "You are not allowed to delete articles") };
+
+  const articleId = String(formData.get("articleId") ?? "");
+  const article = await db.kbArticle.findUnique({ where: { id: articleId }, select: { id: true, title: true } });
+  if (!article) return { error: articleNotFound(t) };
+
+  await db.$transaction(async (tx) => {
+    await tx.kbArticle.delete({ where: { id: articleId } });
+    await writeAudit(tx, user.id, { action: "KB_DELETED", entity: "KB_ARTICLE", entityId: articleId, summary: article.title });
+  });
+
+  revalidatePath("/kb");
+  revalidatePath("/admin/kb");
+  return { ok: true };
+}
+
+/** Shows or hides an article without opening the editor. */
+export async function setArticlePublished(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const { t } = await getI18n();
+  const user = await requireSystemManager();
+
+  const articleId = String(formData.get("articleId") ?? "");
+  const published = formData.get("published") === "true";
+  const article = await db.kbArticle.findUnique({ where: { id: articleId }, select: { id: true, title: true } });
+  if (!article) return { error: articleNotFound(t) };
+
+  await db.$transaction(async (tx) => {
+    await tx.kbArticle.update({ where: { id: articleId }, data: { isPublished: published } });
+    await writeAudit(tx, user.id, {
+      action: "KB_UPDATED",
+      entity: "KB_ARTICLE",
+      entityId: articleId,
+      summary: `${article.title}: ${published ? "published" : "hidden"}`,
+    });
+  });
+
+  revalidatePath("/kb");
+  revalidatePath("/admin/kb");
+  return { ok: true };
 }

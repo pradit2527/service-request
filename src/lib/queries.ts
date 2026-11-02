@@ -7,7 +7,7 @@ import { db } from "./db";
 import { isKbCategory } from "./kb";
 import type { Role } from "./labels";
 import { paginate } from "./pagination";
-import { canManageSystem, canViewRequest, isStaff, type Viewer } from "./permissions";
+import { canEditKb, canManageSystem, canViewRequest, isStaff, type Viewer } from "./permissions";
 import type { RequestType } from "./request-types";
 import { evaluateSla, startOfMonthBangkok, tally, type PassRate, type SlaSubject } from "./sla";
 import { getSlaCalendar } from "./sla-calendar";
@@ -298,7 +298,7 @@ export type ArticleRow = Prisma.KbArticleGetPayload<{ select: typeof articleSele
 
 export async function searchArticles(viewer: Viewer, params: { q?: string; category?: string }): Promise<ArticleRow[]> {
   const and: Prisma.KbArticleWhereInput[] = [];
-  if (!isStaff(viewer)) and.push({ isPublished: true });
+  if (!canEditKb(viewer)) and.push({ isPublished: true });
   if (params.category && isKbCategory(params.category)) and.push({ category: params.category });
 
   // Every word must appear somewhere in the title, summary or body.
@@ -316,7 +316,7 @@ export async function getArticle(viewer: Viewer, id: string) {
     where: { id },
     include: { author: { select: { name: true } } },
   });
-  if (!article || (!article.isPublished && !isStaff(viewer))) return null;
+  if (!article || (!article.isPublished && !canEditKb(viewer))) return null;
   return article;
 }
 
@@ -345,5 +345,20 @@ export async function listUsersForAdmin(filters: UserListFilters) {
     skip,
     take: PAGE_SIZE,
   });
+  return { items, total, page, pageCount };
+}
+
+/** Every article, published or not, for system management. */
+export async function listArticlesForAdmin(filters: { q?: string; page?: number }) {
+  const where: Prisma.KbArticleWhereInput = {};
+  const q = filters.q?.trim();
+  if (q) {
+    const contains = { contains: q, mode: "insensitive" as const };
+    where.OR = [{ title: contains }, { summary: contains }];
+  }
+
+  const total = await db.kbArticle.count({ where });
+  const { page, pageCount, skip } = paginate(total, filters.page ?? 1, PAGE_SIZE);
+  const items = await db.kbArticle.findMany({ where, select: articleSelect, orderBy: { updatedAt: "desc" }, skip, take: PAGE_SIZE });
   return { items, total, page, pageCount };
 }

@@ -9,7 +9,7 @@ import { l } from "@/lib/i18n";
 import { getI18n, getT } from "@/lib/i18n-server";
 import { KB_CATEGORIES, isKbCategory, kbCategoryLabel } from "@/lib/kb";
 import { formatDate } from "@/lib/labels";
-import { isStaff } from "@/lib/permissions";
+import { canEditKb } from "@/lib/permissions";
 import { searchArticles } from "@/lib/queries";
 import { btnPrimary, btnSecondary, cardClass, inputClass } from "@/lib/ui";
 
@@ -45,7 +45,7 @@ export default async function KnowledgeBasePage({ searchParams }: { searchParams
           "Guides and basic troubleshooting from the IT team. Try searching before submitting a request: you may find an answer right away.",
         )}
         actions={
-          isStaff(user) && (
+          canEditKb(user) && (
             <Link href="/kb/new" className={btnPrimary}>
               <Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />
               {t("เขียนบทความ", "ຂຽນບົດຄວາມ", "Write article")}

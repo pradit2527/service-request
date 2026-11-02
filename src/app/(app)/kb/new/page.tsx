@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { ArticleForm } from "@/components/article-form";
 import { PageHeader } from "@/components/page-header";
-import { requireStaff } from "@/lib/dal";
+import { requireKbEditor } from "@/lib/dal";
 import { getT } from "@/lib/i18n-server";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -13,7 +13,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function NewArticlePage() {
   const t = await getT();
-  await requireStaff();
+  await requireKbEditor();
 
   return (
     <div className="mx-auto max-w-5xl space-y-5">

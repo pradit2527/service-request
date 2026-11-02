@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { ArticleForm } from "@/components/article-form";
 import { PageHeader } from "@/components/page-header";
-import { requireStaff } from "@/lib/dal";
+import { requireKbEditor } from "@/lib/dal";
 import { getT } from "@/lib/i18n-server";
 import { getArticle } from "@/lib/queries";
 
@@ -15,7 +15,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function EditArticlePage({ params }: { params: Promise<{ id: string }> }) {
   const t = await getT();
-  const user = await requireStaff();
+  const user = await requireKbEditor();
   const { id } = await params;
   const article = await getArticle(user, id);
   if (!article) notFound();

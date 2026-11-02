@@ -8,7 +8,7 @@ import { requireUser } from "@/lib/dal";
 import { getI18n, getT } from "@/lib/i18n-server";
 import { kbCategoryLabel } from "@/lib/kb";
 import { formatDate } from "@/lib/labels";
-import { isStaff } from "@/lib/permissions";
+import { canEditKb } from "@/lib/permissions";
 import { getArticle, searchArticles } from "@/lib/queries";
 import { btnPrimary, btnSecondary, cardClass } from "@/lib/ui";
 
@@ -34,7 +34,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ id: st
           <ArrowLeft className="h-4 w-4" aria-hidden />
           {t("ฐานความรู้", "ຖານຄວາມຮູ້", "Knowledge base")}
         </Link>
-        {isStaff(user) && (
+        {canEditKb(user) && (
           <Link href={`/kb/${article.id}/edit`} className={btnSecondary}>
             <Pencil className="h-4 w-4" aria-hidden />
             {t("แก้ไข", "ແກ້ໄຂ", "Edit")}
