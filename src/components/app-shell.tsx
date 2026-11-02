@@ -186,8 +186,6 @@ export function AppShell({ user, items, children }: { user: ShellUser; items: Na
   const t = useT();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  // The reports are wide tables, so they use all the room beside the sidebar; every other page keeps its readable width.
-  const fullWidth = pathname === "/reports" || pathname.startsWith("/reports/");
 
   useEffect(() => {
     if (!open) return;
@@ -250,7 +248,8 @@ export function AppShell({ user, items, children }: { user: ShellUser; items: Na
         </div>
       )}
 
-      <main className={`mx-auto w-full px-4 py-6 sm:px-6 lg:px-8 lg:py-6 ${fullWidth ? "" : "max-w-[96rem]"}`}>{children}</main>
+      {/* Every page uses all the room beside the sidebar; forms and articles keep their own narrower column. */}
+      <main className="w-full px-4 py-6 sm:px-6 lg:px-8 lg:py-6">{children}</main>
     </div>
   );
 }
