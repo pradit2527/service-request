@@ -30,9 +30,9 @@ export const ROLE_DESCRIPTION: Record<Role, Localized> = {
     "Submit and track their own requests, and cancel them",
   ),
   MANAGER: l(
-    "ทำได้เหมือนพนักงาน และเป็นคนเดียวที่อนุมัติหรือไม่อนุมัติคำขอที่ผู้ขอเลือกตนเป็นผู้อนุมัติ",
-    "ເຮັດໄດ້ຄືພະນັກງານ ແລະ ເປັນຄົນດຽວທີ່ອະນຸມັດ ຫຼື ບໍ່ອະນຸມັດຄຳຂໍທີ່ຜູ້ຂໍເລືອກຕົນເປັນຜູ້ອະນຸມັດ",
-    "Everything an employee can do, and the only role that can approve or reject requests where the requester chose them as approver",
+    "ทำได้เหมือนพนักงาน และเป็นคนเดียวที่อนุมัติหรือไม่อนุมัติคำขอที่ผู้ขอเลือกตนเป็นผู้อนุมัติ รวมถึงจัดการผู้ใช้ คำขอ และบทความฐานความรู้ในเมนูจัดการระบบ (ยกเว้นบัญชีผู้ดูแลระบบ)",
+    "ເຮັດໄດ້ຄືພະນັກງານ ແລະ ເປັນຄົນດຽວທີ່ອະນຸມັດ ຫຼື ບໍ່ອະນຸມັດຄຳຂໍທີ່ຜູ້ຂໍເລືອກຕົນເປັນຜູ້ອະນຸມັດ ລວມທັງຈັດການຜູ້ໃຊ້, ຄຳຂໍ ແລະ ບົດຄວາມຖານຄວາມຮູ້ໃນເມນູຈັດການລະບົບ (ຍົກເວັ້ນບັນຊີຜູ້ດູແລລະບົບ)",
+    "Everything an employee can do, and the only role that can approve or reject requests where the requester chose them as approver; also manages users, requests and knowledge base articles in system management (except administrator accounts)",
   ),
   IT_STAFF: l(
     "ดูคำขอทั้งหมด เปลี่ยนสถานะ มอบหมาย ปรับระดับ SLA และเขียนบทความฐานความรู้ อนุมัติแทนหัวหน้าไม่ได้",
@@ -40,9 +40,9 @@ export const ROLE_DESCRIPTION: Record<Role, Localized> = {
     "See all requests, change status, assign, adjust the SLA tier and write knowledge base articles; cannot approve on a manager's behalf",
   ),
   ADMIN: l(
-    "ทำได้เหมือนทีม IT และจัดการผู้ใช้กับสิทธิ์ อนุมัติแทนหัวหน้าไม่ได้",
-    "ເຮັດໄດ້ຄືທີມ IT ແລະ ຈັດການຜູ້ໃຊ້ກັບສິດ ອະນຸມັດແທນຫົວໜ້າບໍ່ໄດ້",
-    "Everything IT staff can do, plus manage users and roles; cannot approve on a manager's behalf",
+    "ทำได้เหมือนทีม IT และจัดการระบบได้ทั้งหมด รวมถึงตั้งหรือถอดสิทธิ์ผู้ดูแลระบบ อนุมัติแทนหัวหน้าไม่ได้",
+    "ເຮັດໄດ້ຄືທີມ IT ແລະ ຈັດການລະບົບໄດ້ທັງໝົດ ລວມທັງຕັ້ງ ຫຼື ຖອດສິດຜູ້ດູແລລະບົບ ອະນຸມັດແທນຫົວໜ້າບໍ່ໄດ້",
+    "Everything IT staff can do, plus full system management including granting and removing administrator access; cannot approve on a manager's behalf",
   ),
 };
 

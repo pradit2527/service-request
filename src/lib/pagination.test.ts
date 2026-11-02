@@ -1,5 +1,26 @@
 import { describe, expect, it } from "vitest";
-import { pageItems } from "./pagination";
+import { pageItems, paginate } from "./pagination";
+
+describe("paginate", () => {
+  it("gives one page for an empty list", () => {
+    expect(paginate(0, 1, 14)).toEqual({ page: 1, pageCount: 1, skip: 0 });
+  });
+
+  it("skips the rows of the earlier pages", () => {
+    expect(paginate(15, 2, 14)).toEqual({ page: 2, pageCount: 2, skip: 14 });
+  });
+
+  it("falls back to the last page when the requested one no longer exists, e.g. after deleting its only row", () => {
+    expect(paginate(14, 2, 14)).toEqual({ page: 1, pageCount: 1, skip: 0 });
+    expect(paginate(15, 9, 14)).toEqual({ page: 2, pageCount: 2, skip: 14 });
+  });
+
+  it("treats a page below 1 or a non-number as the first page", () => {
+    expect(paginate(30, 0, 14).page).toBe(1);
+    expect(paginate(30, -3, 14).page).toBe(1);
+    expect(paginate(30, Number.NaN, 14).page).toBe(1);
+  });
+});
 
 describe("pageItems", () => {
   it("shows a single page for a short list", () => {

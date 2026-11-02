@@ -11,9 +11,9 @@ import {
   LogOut,
   Menu,
   Plus,
+  Settings,
   ShieldCheck,
   UserCog,
-  Users,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -27,7 +27,7 @@ import { Logo } from "./logo";
 export type NavItem = {
   href: string;
   label: string;
-  icon: "dashboard" | "requests" | "tasks" | "kb" | "approvals" | "users";
+  icon: "dashboard" | "requests" | "tasks" | "kb" | "approvals" | "settings";
   badge?: number;
 };
 
@@ -37,7 +37,7 @@ const ICONS: Record<NavItem["icon"], LucideIcon> = {
   tasks: ClipboardCheck,
   kb: BookOpen,
   approvals: ShieldCheck,
-  users: Users,
+  settings: Settings,
 };
 
 type ShellUser = { name: string; email: string; roleLabel: string };
@@ -61,8 +61,8 @@ function SidebarContent({
   onNavigate?: () => void;
 }) {
   const t = useT();
-  const main = items.filter((i) => i.icon !== "users");
-  const admin = items.filter((i) => i.icon === "users");
+  const main = items.filter((i) => i.icon !== "settings");
+  const admin = items.filter((i) => i.icon === "settings");
   const creating = pathname === "/requests/new";
 
   return (
@@ -92,7 +92,7 @@ function SidebarContent({
 
       <nav aria-label={t("เมนูหลัก", "ເມນູຫຼັກ", "Main menu")} className="relative mt-6 flex-1 space-y-6 overflow-y-auto px-3">
         <NavGroup label={t("เมนู", "ເມນູ", "Menu")} items={main} pathname={pathname} onNavigate={onNavigate} />
-        {admin.length > 0 && <NavGroup label={t("ผู้ดูแลระบบ", "ຜູ້ດູແລລະບົບ", "Administration")} items={admin} pathname={pathname} onNavigate={onNavigate} />}
+        {admin.length > 0 && <NavGroup label={t("การจัดการ", "ການຈັດການ", "Management")} items={admin} pathname={pathname} onNavigate={onNavigate} />}
       </nav>
 
       <div className="relative px-3 pb-2">

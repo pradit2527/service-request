@@ -2,7 +2,7 @@ import { AppShell, type NavItem } from "@/components/app-shell";
 import { requireUser } from "@/lib/dal";
 import { getT } from "@/lib/i18n-server";
 import { ROLE_LABEL } from "@/lib/labels";
-import { isAdmin, isManager, isStaff } from "@/lib/permissions";
+import { canManageSystem, isManager, isStaff } from "@/lib/permissions";
 import { countMyTasks, countPendingApprovals } from "@/lib/queries";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -26,7 +26,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (isManager(user)) {
     items.push({ href: "/approvals", label: t("รออนุมัติ", "ລໍຖ້າອະນຸມັດ", "Approvals"), icon: "approvals", badge: pendingApprovals });
   }
-  if (isAdmin(user)) items.push({ href: "/admin/users", label: t("จัดการผู้ใช้", "ຈັດການຜູ້ໃຊ້", "Users"), icon: "users" });
+  if (canManageSystem(user)) items.push({ href: "/admin", label: t("จัดการระบบ", "ຈັດການລະບົບ", "System management"), icon: "settings" });
 
   return (
     <AppShell user={{ name: user.name, email: user.email, roleLabel: t(ROLE_LABEL[user.role]) }} items={items}>
