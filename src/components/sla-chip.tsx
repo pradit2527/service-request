@@ -83,14 +83,3 @@ export async function SlaChip({ row }: { row: SlaSubject }) {
     </Badge>
   );
 }
-
-const NOTE_COLOR = { green: "text-slate-400", amber: "text-amber-600", orange: "text-orange-600", red: "text-red-600", slate: "text-slate-400" } as const;
-
-// The quiet twin of the chip, for dense lists: plain text, coloured only when the clock is running short or late.
-export async function SlaNote({ row }: { row: SlaSubject }) {
-  if (row.status === "COMPLETED") return null;
-  const { t, lang } = await getI18n();
-  const shown = activeClock(row, evaluateSla(row, new Date(), getSlaCalendar()), t, lang);
-  if (!shown) return null;
-  return <span className={`text-xs font-medium whitespace-nowrap tabular-nums ${NOTE_COLOR[shown.tone]}`}>{shown.text}</span>;
-}

@@ -4,6 +4,7 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
 import { db } from "./db";
+import { dailyCounts, type DayCount } from "./insights";
 import { isKbCategory } from "./kb";
 import type { Role } from "./labels";
 import { paginate } from "./pagination";
@@ -196,17 +197,57 @@ export function countMyTasks(userId: string) {
 }
 
 export async function getStaffDashboard() {
-  const [grouped, unassigned, queue] = await Promise.all([
+  const [grouped, unassigned] = await Promise.all([
     db.serviceRequest.groupBy({ by: ["status"], where: { deletedAt: null }, _count: { _all: true } }),
     db.serviceRequest.count({ where: { assigneeId: null, status: { in: ["SUBMITTED", "IN_REVIEW"] }, deletedAt: null } }),
-    db.serviceRequest.findMany({
-      where: { status: "SUBMITTED", deletedAt: null },
-      select: rowSelect,
-      orderBy: { createdAt: "asc" },
-      take: 8,
-    }),
   ]);
-  return { counts: toStatusCounts(grouped), unassigned, queue };
+  return { counts: toStatusCounts(grouped), unassigned };
+}
+
+/** How many days of requests filed per day the home page charts (twice the period it compares). */
+export const INSIGHT_DAYS = 28;
+
+// Open requests that are in the IT team's hands (a request waiting for its manager is not).
+const WORKLOAD_STATUSES = OPEN_STATUSES.filter((status) => status !== "PENDING_APPROVAL");
+
+export type StaffInsights = {
+  /** Requests filed per day, oldest first (INSIGHT_DAYS days, ending today). */
+  daily: DayCount[];
+  /** This month's requests by type, the most common first. */
+  byType: { type: RequestType; count: number }[];
+  /** Open requests by assignee, the busiest first; name is null for the ones nobody has taken. */
+  workload: { name: string | null; count: number }[];
+};
+
+/** The figures behind the charts on the IT team's home page. Deleted requests are never counted. */
+export async function getStaffInsights(now: Date = new Date()): Promise<StaffInsights> {
+  const cal = getSlaCalendar();
+  const monthStart = startOfMonthBangkok(now, cal);
+  const windowStart = new Date(`${dailyCounts([], now, INSIGHT_DAYS)[0].date}T00:00:00+07:00`);
+
+  const [recent, types, assigned] = await Promise.all([
+    db.serviceRequest.findMany({ where: { createdAt: { gte: windowStart }, deletedAt: null }, select: { createdAt: true }, take: 20_000 }),
+    db.serviceRequest.groupBy({ by: ["type"], where: { createdAt: { gte: monthStart }, deletedAt: null }, _count: { _all: true } }),
+    db.serviceRequest.groupBy({ by: ["assigneeId"], where: { status: { in: WORKLOAD_STATUSES }, deletedAt: null }, _count: { _all: true } }),
+  ]);
+
+  const staff = await db.user.findMany({
+    where: { id: { in: assigned.flatMap((row) => (row.assigneeId ? [row.assigneeId] : [])) } },
+    select: { id: true, name: true },
+  });
+  const nameOf = new Map(staff.map((person) => [person.id, person.name]));
+
+  return {
+    daily: dailyCounts(
+      recent.map((row) => row.createdAt),
+      now,
+      INSIGHT_DAYS,
+    ),
+    byType: types.map((row) => ({ type: row.type, count: row._count._all })).sort((a, b) => b.count - a.count),
+    workload: assigned
+      .map((row) => ({ name: row.assigneeId ? (nameOf.get(row.assigneeId) ?? null) : null, count: row._count._all }))
+      .sort((a, b) => b.count - a.count),
+  };
 }
 
 function toStatusCounts(grouped: { status: RequestStatus; _count: { _all: number } }[]) {

@@ -41,7 +41,8 @@ describe("summarizeRequests at the 20,000-row cap", () => {
     const rows = Array.from({ length: 50_000 }, () => subject());
     const started = performance.now();
     const { rows: groups, totals } = summarizeRequests(rows, "type", NOW);
-    expect(performance.now() - started).toBeLessThan(1500);
+    // A quadratic grouping took about 12 s for these rows; a linear one needs about a second even on a busy machine.
+    expect(performance.now() - started).toBeLessThan(5000);
     expect(groups).toHaveLength(1);
     expect(totals.total).toBe(50_000);
   });

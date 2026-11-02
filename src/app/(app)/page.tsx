@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, BookOpen, Check, Plus, Search, ShieldCheck, TriangleAlert } from "lucide-react";
-import { QueueList } from "@/components/queue-list";
+import { TrendCard, TypeBreakdownCard, WorkloadCard } from "@/components/insight-cards";
 import { RequestTable } from "@/components/request-list";
 import { SectionHeader } from "@/components/section-header";
 import { SlaOverviewCard } from "@/components/sla-overview-card";
@@ -12,7 +12,14 @@ import { l } from "@/lib/i18n";
 import { getI18n, getT } from "@/lib/i18n-server";
 import { formatDateLong, formatNumber } from "@/lib/labels";
 import { isStaff } from "@/lib/permissions";
-import { countPendingApprovals, getEmployeeDashboard, getSlaOverview, getStaffDashboard, searchArticles } from "@/lib/queries";
+import {
+  countPendingApprovals,
+  getEmployeeDashboard,
+  getSlaOverview,
+  getStaffDashboard,
+  getStaffInsights,
+  searchArticles,
+} from "@/lib/queries";
 import { kbCategoryLabel } from "@/lib/kb";
 import { cardClass } from "@/lib/ui";
 
@@ -374,7 +381,7 @@ async function EmployeeView({ user, firstName }: ViewProps) {
 
 async function StaffView({ firstName }: Pick<ViewProps, "firstName">) {
   const { t, lang } = await getI18n();
-  const [{ counts, unassigned, queue }, sla] = await Promise.all([getStaffDashboard(), getSlaOverview()]);
+  const [{ counts, unassigned }, sla, insights] = await Promise.all([getStaffDashboard(), getSlaOverview(), getStaffInsights()]);
 
   const plural = (n: number) => (n === 1 ? "request" : "requests");
   const parts: string[] = [];
@@ -438,13 +445,13 @@ async function StaffView({ firstName }: Pick<ViewProps, "firstName">) {
       </div>
 
       <div className="animate-fade-up grid gap-5 motion-reduce:animate-none lg:grid-cols-5" style={{ animationDelay: "120ms" }}>
-        <section className="min-w-0 lg:col-span-3">
-          <SectionHeader
-            title={t("คิวรอ IT ดำเนินการ (เก่าสุดก่อน)", "ຄິວລໍ IT ດຳເນີນການ (ເກົ່າສຸດກ່ອນ)", "IT queue (oldest first)")}
-            href="/requests?status=SUBMITTED"
-          />
-          <QueueList items={queue} emptyText={t("ไม่มีคำขอที่รอ IT ดำเนินการ", "ບໍ່ມີຄຳຂໍທີ່ລໍ IT ດຳເນີນການ", "No requests waiting for IT")} />
-        </section>
+        <div className="min-w-0 space-y-5 lg:col-span-3">
+          <TrendCard daily={insights.daily} />
+          <div className="grid gap-5 md:grid-cols-2">
+            <TypeBreakdownCard byType={insights.byType} />
+            <WorkloadCard workload={insights.workload} />
+          </div>
+        </div>
 
         <div className="min-w-0 space-y-5 lg:col-span-2">
           <SlaOverviewCard overview={sla} />
