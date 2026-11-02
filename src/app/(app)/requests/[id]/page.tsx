@@ -21,8 +21,8 @@ import { formatDate, formatDateTime } from "@/lib/labels";
 import {
   allowedStatusChanges,
   canCancelRequest,
-  canComment,
   canDecideAsManager,
+  commentAvailability,
   canPostInternalNote,
   isStaff,
 } from "@/lib/permissions";
@@ -54,6 +54,7 @@ export default async function RequestDetailPage({
   const staff = isStaff(user);
   const detailRows = describeDetails(request.type, request.details, lang);
   const allowedStatuses = allowedStatusChanges(user, request);
+  const commentBox = commentAvailability(user, request);
   const [assignable, approvers] = staff
     ? await Promise.all([listAssignableStaff(), request.status === "PENDING_APPROVAL" ? listApprovers(request.requesterId) : []])
     : [[], []];
@@ -164,13 +165,23 @@ export default async function RequestDetailPage({
             <RequestTimeline request={request} />
           </section>
 
-          {request.deletedAt ? null : canComment(user, request) ? (
+          {!request.deletedAt && commentBox === "open" && (
             <section className={`${cardClass} p-4`}>
               <h2 className="mb-2 font-semibold text-slate-900">{t("เพิ่มข้อความ", "ເພີ່ມຂໍ້ຄວາມ", "Add a message")}</h2>
               <CommentForm requestId={request.id} canPostInternal={canPostInternalNote(user)} />
             </section>
-          ) : (
+          )}
+          {!request.deletedAt && commentBox === "closed" && (
             <p className="text-sm text-slate-500">{t("คำขอนี้ปิดแล้ว ไม่สามารถเพิ่มข้อความได้", "ຄຳຂໍນີ້ປິດແລ້ວ ບໍ່ສາມາດເພີ່ມຂໍ້ຄວາມໄດ້", "This request is closed. Messages can no longer be added.")}</p>
+          )}
+          {!request.deletedAt && commentBox === "not-participant" && (
+            <p className="text-sm text-slate-500">
+              {t(
+                "คุณดูคำขอนี้จากเมนูจัดการระบบ จึงไม่ได้เป็นผู้เกี่ยวข้องที่ส่งข้อความได้",
+                "ທ່ານເບິ່ງຄຳຂໍນີ້ຈາກເມນູຈັດການລະບົບ ຈຶ່ງບໍ່ໄດ້ເປັນຜູ້ກ່ຽວຂ້ອງທີ່ສົ່ງຂໍ້ຄວາມໄດ້",
+                "You are viewing this request from system management, so you are not a participant who can post messages.",
+              )}
+            </p>
           )}
         </div>
 

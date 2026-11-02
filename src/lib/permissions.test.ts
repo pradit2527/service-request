@@ -9,6 +9,7 @@ import {
   canEditKb,
   canEditRequest,
   canManageSystem,
+  commentAvailability,
   canModifyUser,
   canPostInternalNote,
   canViewRequest,
@@ -130,6 +131,36 @@ describe("commenting", () => {
   it("limits internal notes to the IT team", () => {
     expect(canPostInternalNote(employee)).toBe(false);
     expect(canPostInternalNote(staff)).toBe(true);
+  });
+});
+
+describe("what the message box on a request shows", () => {
+  it("is open for the people who can write", () => {
+    expect(commentAvailability(employee, { requesterId: employee.id, status: "IN_PROGRESS" })).toBe("open");
+    expect(commentAvailability(staff, { requesterId: employee.id, status: "COMPLETED" })).toBe("open");
+  });
+
+  it("says closed to the requester of a finished request", () => {
+    expect(commentAvailability(employee, { requesterId: employee.id, status: "COMPLETED" })).toBe("closed");
+  });
+
+  it("says nothing is wrong when a manager only looks at someone else's open request from system management", () => {
+    expect(commentAvailability(manager, { requesterId: employee.id, status: "IN_PROGRESS" })).toBe("not-participant");
+    // Even when that request is finished, "closed" would be the wrong thing to tell someone who could never write on it.
+    expect(commentAvailability(manager, { requesterId: employee.id, status: "COMPLETED" })).toBe("not-participant");
+  });
+
+  it("agrees with canComment", () => {
+    const requests = [
+      { requesterId: employee.id, status: "IN_PROGRESS" as const },
+      { requesterId: employee.id, status: "COMPLETED" as const },
+      { requesterId: employee.id, approverId: manager.id, status: "PENDING_APPROVAL" as const },
+    ];
+    for (const viewer of [employee, other, manager, staff, admin]) {
+      for (const request of requests) {
+        expect(canComment(viewer, request)).toBe(commentAvailability(viewer, request) === "open");
+      }
+    }
   });
 });
 

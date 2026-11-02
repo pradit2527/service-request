@@ -3,6 +3,7 @@ import {
   EDITABLE_REQUEST_FIELDS,
   REQUEST_EDIT_FIELD_LABEL,
   USER_REFERENCE_LABEL,
+  approverFormValue,
   changedFields,
   profileNameOnSignIn,
   userDeletionBlockers,
@@ -56,6 +57,22 @@ describe("changedFields", () => {
 
   it("keeps the order of the keys it was given", () => {
     expect(changedFields({ a: 1, b: 1 }, { a: 2, b: 2 }, ["b", "a"])).toEqual(["b", "a"]);
+  });
+});
+
+describe("approverFormValue", () => {
+  const choices = [{ id: "m1" }, { id: "m2" }];
+
+  it("preselects the current approver while they can still be chosen", () => {
+    expect(approverFormValue("m2", choices)).toBe("m2");
+  });
+
+  it("falls back to 'keep the current approver' (empty) when the current approver can no longer be chosen, so saving other fields never reassigns the request", () => {
+    expect(approverFormValue("m9", choices)).toBe("");
+  });
+
+  it("is empty when there is no current approver", () => {
+    expect(approverFormValue("", choices)).toBe("");
   });
 });
 

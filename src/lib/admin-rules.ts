@@ -63,6 +63,15 @@ export function changedFields<K extends string>(before: Record<K, unknown>, afte
 }
 
 /**
+ * The value the approver dropdown of the request edit form starts on: the current approver while they can
+ * still be chosen, otherwise "" ("keep the current approver"). Without the fallback the browser would
+ * select the first manager in the list and saving any other field would silently reassign the request.
+ */
+export function approverFormValue(currentApproverId: string, choices: { id: string }[]): string {
+  return choices.some((choice) => choice.id === currentApproverId) ? currentApproverId : "";
+}
+
+/**
  * The display name to store when someone signs in with Google, or `undefined` to leave it as it is.
  * The Google name is used the first time only; after that the administrators own the name.
  */

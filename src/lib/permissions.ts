@@ -44,11 +44,22 @@ export function canCancelRequest(viewer: Viewer, request: RequestRef): boolean {
   return request.requesterId === viewer.id && CANCELLABLE_STATUSES.includes(request.status);
 }
 
-export function canComment(viewer: Viewer, request: RequestRef): boolean {
-  if (isStaff(viewer)) return true;
+/**
+ * What the message box on a request page should show: the form ("open"), a note that the request is
+ * finished ("closed", only for someone who took part in it), or nothing ("not-participant").
+ */
+export type CommentAvailability = "open" | "closed" | "not-participant";
+
+export function commentAvailability(viewer: Viewer, request: RequestRef): CommentAvailability {
+  if (isStaff(viewer)) return "open";
   // Opening a request from system management does not make a manager a participant in it.
   const involved = request.requesterId === viewer.id || isApproverOf(viewer, request);
-  return involved && !isClosed(request.status);
+  if (!involved) return "not-participant";
+  return isClosed(request.status) ? "closed" : "open";
+}
+
+export function canComment(viewer: Viewer, request: RequestRef): boolean {
+  return commentAvailability(viewer, request) === "open";
 }
 
 export function canPostInternalNote(viewer: Viewer): boolean {

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState } from "react";
 import { updateRequestByAdmin } from "@/app/actions/admin-requests";
 import { useT } from "@/components/lang-provider";
+import { approverFormValue } from "@/lib/admin-rules";
 import { PRIORITIES, PRIORITY_LABEL, type Priority } from "@/lib/labels";
 import { submitWithoutReset } from "@/lib/submit-without-reset";
 import { btnPrimary, btnSecondary, cardClass, errorTextClass, helpTextClass, inputClass, inputErrorClass, labelClass } from "@/lib/ui";
@@ -90,7 +91,8 @@ export function RequestEditForm({
             <label htmlFor="approverId" className={labelClass}>
               {t("ผู้อนุมัติ (หัวหน้างาน)", "ຜູ້ອະນຸມັດ (ຫົວໜ້າ)", "Approver (manager)")}
             </label>
-            <select id="approverId" name="approverId" defaultValue={request.approverId} className={field("approverId")}>
+            <select id="approverId" name="approverId" defaultValue={approverFormValue(request.approverId, approvers)} className={field("approverId")}>
+              <option value="">{t("— ไม่เปลี่ยนผู้อนุมัติ —", "— ບໍ່ປ່ຽນຜູ້ອະນຸມັດ —", "— Keep the current approver —")}</option>
               {approvers.map((approver) => (
                 <option key={approver.id} value={approver.id}>
                   {approver.name}
