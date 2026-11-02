@@ -1,11 +1,11 @@
 import { getT } from "@/lib/i18n-server";
 import { SLA_PASS_TARGET, type PassRate } from "@/lib/sla";
 
-// Circular gauge for a monthly SLA pass rate, coloured by whether it reaches the target.
+// Thin circular gauge for a monthly SLA pass rate, coloured by whether it reaches the target.
 export async function PassRateRing({ title, data }: { title: string; data: PassRate }) {
   const t = await getT();
-  const size = 112;
-  const stroke = 10;
+  const size = 92;
+  const stroke = 6;
   const radius = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
   const rate = data.rate;
@@ -31,10 +31,10 @@ export async function PassRateRing({ title, data }: { title: string; data: PassR
           )}
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-2xl font-semibold tracking-tight text-slate-900 tabular-nums">{rate === null ? "—" : `${Math.round(rate * 100)}%`}</span>
+          <span className="text-xl font-semibold tracking-tight text-slate-900 tabular-nums">{rate === null ? "—" : `${Math.round(rate * 100)}%`}</span>
         </div>
       </div>
-      <p className="mt-2 text-sm font-medium text-slate-900">{title}</p>
+      <p className="mt-2.5 text-[13px] font-medium text-slate-900">{title}</p>
       <p className="text-xs text-slate-500">
         {t(`ทัน ${data.met} · เกิน ${data.breached}`, `ທັນ ${data.met} · ເກີນ ${data.breached}`, `Met ${data.met} · Breached ${data.breached}`)}
       </p>

@@ -35,10 +35,22 @@ function describe(clock: SlaClock, label: string, t: Translate, lang: Lang) {
   }
 }
 
+type Clocks = ReturnType<typeof evaluateSla>;
+
+// The clock a request that is still open is judged by: the response clock until IT responds, then the fulfillment clock.
+function activeClock(row: SlaSubject, { response, fulfillment }: Clocks, t: Translate, lang: Lang) {
+  const responseLabel = t("ตอบรับ", "ຕອບຮັບ", "Response");
+  const onResponse = describe(response, responseLabel, t, lang);
+  return onResponse && response.state !== "paused" && !row.firstResponseAt
+    ? onResponse
+    : describe(fulfillment, t("ส่งมอบ", "ສົ່ງມອບ", "Fulfillment"), t, lang);
+}
+
 // One compact SLA indicator for list rows: the response clock until IT responds, then the fulfillment clock.
 export async function SlaChip({ row }: { row: SlaSubject }) {
   const { t, lang } = await getI18n();
-  const { response, fulfillment } = evaluateSla(row, new Date(), getSlaCalendar());
+  const clocks = evaluateSla(row, new Date(), getSlaCalendar());
+  const { fulfillment } = clocks;
 
   if (row.status === "COMPLETED") {
     if (fulfillment.state === "met") {
@@ -60,11 +72,7 @@ export async function SlaChip({ row }: { row: SlaSubject }) {
     return null;
   }
 
-  const responseLabel = t("ตอบรับ", "ຕອບຮັບ", "Response");
-  const shown =
-    describe(response, responseLabel, t, lang) && response.state !== "paused" && !row.firstResponseAt
-      ? describe(response, responseLabel, t, lang)
-      : describe(fulfillment, t("ส่งมอบ", "ສົ່ງມອບ", "Fulfillment"), t, lang);
+  const shown = activeClock(row, clocks, t, lang);
   if (!shown) return null;
 
   const Icon = shown.icon;
@@ -74,4 +82,15 @@ export async function SlaChip({ row }: { row: SlaSubject }) {
       {shown.text}
     </Badge>
   );
+}
+
+const NOTE_COLOR = { green: "text-slate-400", amber: "text-amber-600", orange: "text-orange-600", red: "text-red-600", slate: "text-slate-400" } as const;
+
+// The quiet twin of the chip, for dense lists: plain text, coloured only when the clock is running short or late.
+export async function SlaNote({ row }: { row: SlaSubject }) {
+  if (row.status === "COMPLETED") return null;
+  const { t, lang } = await getI18n();
+  const shown = activeClock(row, evaluateSla(row, new Date(), getSlaCalendar()), t, lang);
+  if (!shown) return null;
+  return <span className={`text-xs font-medium whitespace-nowrap tabular-nums ${NOTE_COLOR[shown.tone]}`}>{shown.text}</span>;
 }
