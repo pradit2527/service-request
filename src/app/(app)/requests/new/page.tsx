@@ -7,7 +7,8 @@ import { TypeIcon } from "@/components/type-icon";
 import { requiresManagerApproval } from "@/lib/approval";
 import { requireUser } from "@/lib/dal";
 import { getI18n, getT } from "@/lib/i18n-server";
-import { listApprovers } from "@/lib/queries";
+import { canManageSystem } from "@/lib/permissions";
+import { listApprovers, listRequesterOptions } from "@/lib/queries";
 import { AUDIENCE_LABEL, REQUEST_CATEGORIES, REQUEST_TYPE_DEFS, isRequestType } from "@/lib/request-types";
 import { todayBangkok } from "@/lib/request-number";
 import { SLA_TIER_DEF, classifyTier, formatBusinessDuration } from "@/lib/sla";
@@ -147,7 +148,14 @@ export default async function NewRequestPage({ searchParams }: { searchParams: P
   }
 
   const def = REQUEST_TYPE_DEFS[type];
-  const approvers = await listApprovers(user.id);
+  // Administrators and managers can file for someone else, so they get every user to choose from and every manager
+  // as a possible approver; the form leaves out whoever ends up as the requester.
+  const filesForOthers = canManageSystem(user);
+  const [approvers, requesters] = await Promise.all([
+    listApprovers(filesForOthers ? "" : user.id),
+    filesForOthers ? listRequesterOptions() : undefined,
+  ]);
+  const otherApprovers = approvers.filter((a) => a.id !== user.id).length;
 
   return (
     <div className="mx-auto max-w-5xl space-y-5 2xl:max-w-7xl">
@@ -171,10 +179,12 @@ export default async function NewRequestPage({ searchParams }: { searchParams: P
         type={type}
         fields={[...def.fields]}
         approvers={approvers}
-        needsApproval={requiresManagerApproval(user, approvers.length)}
+        needsApproval={requiresManagerApproval(user, otherApprovers)}
         holidays={slaHolidayList()}
         today={todayBangkok()}
         requester={{ name: user.name, department: user.department, phone: user.phone }}
+        requesters={requesters}
+        selfId={filesForOthers ? user.id : undefined}
       />
     </div>
   );

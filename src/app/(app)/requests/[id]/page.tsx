@@ -2,10 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, CircleCheck, Trash2 } from "lucide-react";
+import { restoreRequest } from "@/app/actions/admin-requests";
 import { Avatar } from "@/components/avatar";
 import { Badge, StatusBadge } from "@/components/badges";
 import { CancelButton } from "@/components/cancel-button";
 import { CommentForm } from "@/components/comment-form";
+import { ConfirmActionButton } from "@/components/confirm-action-button";
 import { ManagerDecision } from "@/components/manager-decision";
 import { ProgressSteps } from "@/components/progress-steps";
 import { RequestTimeline } from "@/components/request-timeline";
@@ -71,13 +73,22 @@ export default async function RequestDetailPage({
       {request.deletedAt && (
         <div className="flex gap-3 rounded-2xl bg-amber-50 p-4 text-sm text-amber-900 ring-1 ring-amber-200 ring-inset" role="status">
           <Trash2 className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
-          <p>
-            {t(
-              `คำขอนี้ถูกลบโดย ${request.deletedBy?.name ?? "-"} เมื่อ ${formatDateTime(request.deletedAt, lang)} คนอื่นมองไม่เห็นคำขอนี้ และกู้คืนได้จากเมนูจัดการระบบ`,
-              `ຄຳຂໍນີ້ຖືກລຶບໂດຍ ${request.deletedBy?.name ?? "-"} ເມື່ອ ${formatDateTime(request.deletedAt, lang)} ຄົນອື່ນບໍ່ເຫັນຄຳຂໍນີ້ ແລະ ກູ້ຄືນໄດ້ຈາກເມນູຈັດການລະບົບ`,
-              `This request was deleted by ${request.deletedBy?.name ?? "-"} on ${formatDateTime(request.deletedAt, lang)}. Nobody else can see it, and it can be restored from system management.`,
-            )}
-          </p>
+          <div className="min-w-0 flex-1 space-y-3">
+            <p>
+              {t(
+                `คำขอนี้ถูกลบโดย ${request.deletedBy?.name ?? "-"} เมื่อ ${formatDateTime(request.deletedAt, lang)} คนอื่นมองไม่เห็นคำขอนี้ และกู้คืนได้จากเมนูจัดการระบบ`,
+                `ຄຳຂໍນີ້ຖືກລຶບໂດຍ ${request.deletedBy?.name ?? "-"} ເມື່ອ ${formatDateTime(request.deletedAt, lang)} ຄົນອື່ນບໍ່ເຫັນຄຳຂໍນີ້ ແລະ ກູ້ຄືນໄດ້ຈາກເມນູຈັດການລະບົບ`,
+                `This request was deleted by ${request.deletedBy?.name ?? "-"} on ${formatDateTime(request.deletedAt, lang)}. Nobody else can see it, and it can be restored from system management.`,
+              )}
+            </p>
+            <ConfirmActionButton
+              action={restoreRequest}
+              fields={{ requestId: request.id }}
+              label={t("กู้คืนคำขอ", "ກູ້ຄືນຄຳຂໍ", "Restore request")}
+              pendingLabel={t("กำลังกู้คืน...", "ກຳລັງກູ້ຄືນ...", "Restoring...")}
+              variant="secondary"
+            />
+          </div>
         </div>
       )}
 
