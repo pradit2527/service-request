@@ -10,7 +10,11 @@ import {
   type RequestStatus,
 } from "./status";
 
-export type Viewer = { id: string; role: Role };
+/**
+ * `actingFor` lists the managers who are away and have named this person to approve in their place right now
+ * (see delegation-rules.ts). It is loaded with the user on every request, so a stand-in ends the moment the period does.
+ */
+export type Viewer = { id: string; role: Role; actingFor?: readonly string[] };
 export type RequestRef = { requesterId: string; status: RequestStatus; approverId?: string | null };
 
 export function isStaff(viewer: Viewer): boolean {
@@ -26,9 +30,15 @@ export function isManager(viewer: Viewer): boolean {
   return viewer.role === "MANAGER";
 }
 
-/** The manager the requester picked to approve this request. */
+/** The manager the requester picked to approve this request, or the person standing in for them while they are away. */
 export function isApproverOf(viewer: Viewer, request: Pick<RequestRef, "approverId">): boolean {
-  return !!request.approverId && request.approverId === viewer.id;
+  if (!request.approverId) return false;
+  return request.approverId === viewer.id || (viewer.actingFor?.includes(request.approverId) ?? false);
+}
+
+/** True when the viewer is looking at this request as the stand-in, not as the approver the requester picked. */
+export function isStandingIn(viewer: Viewer, request: Pick<RequestRef, "approverId">): boolean {
+  return !!request.approverId && request.approverId !== viewer.id && isApproverOf(viewer, request);
 }
 
 /** System management (users, requests, knowledge base) is open to administrators and managers. */
@@ -67,9 +77,9 @@ export function canPostInternalNote(viewer: Viewer): boolean {
 }
 
 /**
- * Only a user whose role is MANAGER, and who the requester chose for this request, can approve or
- * reject it, never their own request. The role is read on every request, so changing someone's role
- * also takes effect on requests that are already waiting for them.
+ * Only a user whose role is MANAGER, and who the requester chose for this request (or who stands in for that manager
+ * while they are away), can approve or reject it, never their own request. The role is read on every request, so
+ * changing someone's role also takes effect on requests that are already waiting for them.
  */
 export function canDecideAsManager(viewer: Viewer, request: RequestRef): boolean {
   return (

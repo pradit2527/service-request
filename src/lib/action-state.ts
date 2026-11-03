@@ -12,6 +12,8 @@ export function firstIssuePerField(error: { issues: { path: PropertyKey[]; messa
 export type ActionState =
   | {
       ok?: boolean;
+      /** A note on a success, for example how many of the ticked requests were approved and how many skipped. */
+      info?: string;
       error?: string;
       fieldErrors?: Record<string, string>;
     }

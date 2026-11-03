@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, CircleCheck, Trash2 } from "lucide-react";
+import { ArrowLeft, CircleCheck, MessageCircleQuestion, Trash2 } from "lucide-react";
 import { restoreRequest } from "@/app/actions/admin-requests";
 import { Avatar } from "@/components/avatar";
 import { Badge, StatusBadge } from "@/components/badges";
@@ -15,6 +15,7 @@ import { SlaChip } from "@/components/sla-chip";
 import { SlaPanel } from "@/components/sla-panel";
 import { StaffPanel } from "@/components/staff-panel";
 import { TypeIcon } from "@/components/type-icon";
+import { approvalWait, approverWaitingSince, waitText } from "@/lib/approval-aging";
 import { requireUser } from "@/lib/dal";
 import { getI18n, getT } from "@/lib/i18n-server";
 import { formatDate, formatDateTime } from "@/lib/labels";
@@ -24,11 +25,13 @@ import {
   canDecideAsManager,
   commentAvailability,
   canPostInternalNote,
+  isStandingIn,
   isStaff,
 } from "@/lib/permissions";
 import { getRequestDetail, listApprovers, listAssignableStaff } from "@/lib/queries";
 import { REQUEST_TYPE_DEFS, describeDetails } from "@/lib/request-types";
 import { SLA_TIER_DEF, formatBusinessDuration } from "@/lib/sla";
+import { getSlaCalendar } from "@/lib/sla-calendar";
 import { cardClass } from "@/lib/ui";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -63,6 +66,12 @@ export default async function RequestDetailPage({
   const approverName = request.approver?.name ?? t("หัวหน้างาน", "ຫົວໜ້າ", "the manager");
   const responseTarget = formatBusinessDuration(SLA_TIER_DEF[request.slaTier].responseMinutes, lang);
   const fulfillmentTarget = formatBusinessDuration(SLA_TIER_DEF[request.slaTier].fulfillmentMinutes, lang);
+
+  // While waiting for approval: has the approver asked the requester something, and how long has the approver waited?
+  const waitingForApproval = request.status === "PENDING_APPROVAL";
+  const askedForInfo = waitingForApproval && request.infoRequestedAt !== null;
+  const waitingSince = waitingForApproval ? approverWaitingSince(request) : null;
+  const wait = waitingSince ? approvalWait(waitingSince, new Date(), getSlaCalendar()) : null;
 
   return (
     <div className="space-y-5">
@@ -116,6 +125,19 @@ export default async function RequestDetailPage({
                   )}
             </p>
           </div>
+        </div>
+      )}
+
+      {askedForInfo && request.requesterId === user.id && (
+        <div className="flex gap-3 rounded-2xl bg-amber-50 p-4 text-sm text-amber-900 ring-1 ring-amber-200 ring-inset" role="alert">
+          <MessageCircleQuestion className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
+          <p>
+            {t(
+              `${approverName} ขอข้อมูลเพิ่มเติม กรุณาตอบในช่องข้อความด้านล่าง ระหว่างนี้คำขอยังรออนุมัติอยู่ และเมื่อคุณตอบแล้วจะกลับไปรอให้หัวหน้าพิจารณา`,
+              `${approverName} ຂໍຂໍ້ມູນເພີ່ມເຕີມ ກະລຸນາຕອບໃນຊ່ອງຂໍ້ຄວາມດ້ານລຸ່ມ ລະຫວ່າງນີ້ຄຳຂໍຍັງລໍຖ້າອະນຸມັດຢູ່ ແລະ ເມື່ອທ່ານຕອບແລ້ວຈະກັບໄປລໍຖ້າໃຫ້ຫົວໜ້າພິຈາລະນາ`,
+              `${approverName} has asked for more information. Please answer in the message box below. The request is still waiting for approval, and once you answer it goes back to the manager.`,
+            )}
+          </p>
         </div>
       )}
 
@@ -186,7 +208,13 @@ export default async function RequestDetailPage({
         </div>
 
         <aside className="min-w-0 space-y-4">
-          {!request.deletedAt && canDecideAsManager(user, request) && <ManagerDecision requestId={request.id} />}
+          {!request.deletedAt && canDecideAsManager(user, request) && (
+            <ManagerDecision
+              requestId={request.id}
+              standingInFor={isStandingIn(user, request) ? (request.approver?.name ?? null) : null}
+              waitingForRequester={askedForInfo}
+            />
+          )}
 
           <section className={`${cardClass} p-4`}>
             <h2 className="mb-4 font-semibold text-slate-900">{t("ข้อมูลคำขอ", "ຂໍ້ມູນຄຳຂໍ", "Request information")}</h2>
@@ -208,7 +236,16 @@ export default async function RequestDetailPage({
                           `ອະນຸມັດເມື່ອ ${formatDateTime(request.managerApprovedAt, lang)}`,
                           `Approved on ${formatDateTime(request.managerApprovedAt, lang)}`,
                         )
-                      : (request.approver.department ?? undefined)
+                      : [
+                          request.approver.department,
+                          askedForInfo
+                            ? t("รอผู้ขอตอบข้อมูลเพิ่ม", "ລໍຖ້າຜູ້ຂໍຕອບຂໍ້ມູນເພີ່ມ", "Waiting for the requester's answer")
+                            : wait
+                              ? waitText(wait, t)
+                              : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ") || undefined
                   }
                   badge={request.status === "PENDING_APPROVAL" ? <Badge tone="indigo">{t("รออนุมัติ", "ລໍຖ້າອະນຸມັດ", "Pending approval")}</Badge> : undefined}
                 />

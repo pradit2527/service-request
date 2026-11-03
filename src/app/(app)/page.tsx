@@ -229,7 +229,7 @@ async function ActionCards() {
 export default async function DashboardPage() {
   const user = await requireUser();
   const firstName = user.name.split(/\s+/)[0] || user.name;
-  const pendingApprovals = await countPendingApprovals(user.id);
+  const pendingApprovals = await countPendingApprovals(user);
 
   return (
     <div className="space-y-5 sm:space-y-6">

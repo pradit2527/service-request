@@ -3,12 +3,14 @@ import Link from "next/link";
 import { Search } from "lucide-react";
 import { Badge, StatusBadge } from "@/components/badges";
 import { ConfirmActionButton } from "@/components/confirm-action-button";
+import { OverdueApprovalsCard } from "@/components/overdue-approvals-card";
 import { PaginationNav } from "@/components/pagination-nav";
 import { deleteRequest, restoreRequest } from "@/app/actions/admin-requests";
 import { requireSystemManager } from "@/lib/dal";
 import { getI18n } from "@/lib/i18n-server";
 import { formatDateTime, formatNumber } from "@/lib/labels";
-import { listRequests, type ListFilters } from "@/lib/queries";
+import { isAdmin } from "@/lib/permissions";
+import { listOverdueApprovals, listRequests, type ListFilters } from "@/lib/queries";
 import { REQUEST_TYPE_DEFS } from "@/lib/request-types";
 import { CURRENT_STATUSES, STATUS_LABEL, isValidStatus } from "@/lib/status";
 import { btnPrimary, btnSecondary, cardClass, inputClass } from "@/lib/ui";
@@ -32,7 +34,11 @@ export default async function AdminRequestsPage({ searchParams }: { searchParams
     deleted: params.deleted === "include" || params.deleted === "only" ? params.deleted : undefined,
     page: Math.max(1, Number.parseInt(params.page ?? "1", 10) || 1),
   };
-  const { items, total, page, pageCount } = await listRequests(actor, filters);
+  const [{ items, total, page, pageCount }, overdue] = await Promise.all([
+    listRequests(actor, filters),
+    // How slow each approver is concerns the administrators only.
+    isAdmin(actor) ? listOverdueApprovals() : [],
+  ]);
   const hasFilters = Boolean(filters.q || filters.status || filters.deleted);
 
   const hrefFor = (target: number) => {
@@ -48,6 +54,8 @@ export default async function AdminRequestsPage({ searchParams }: { searchParams
 
   return (
     <div className="space-y-5">
+      {overdue.length > 0 && <OverdueApprovalsCard rows={overdue} />}
+
       <p className="text-sm text-slate-500">
         {t(`พบ ${totalText} รายการ`, `ພົບ ${totalText} ລາຍການ`, `${totalText} ${total === 1 ? "request" : "requests"} found`)}
       </p>

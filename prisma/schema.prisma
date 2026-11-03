@@ -91,6 +91,10 @@ enum EventAction {
   EDITED
   DELETED
   RESTORED
+  // The approver asked the requester for more information while the request waited for approval.
+  INFO_REQUESTED
+  // A stand-in approver decided in place of the manager who is away (toValue is that manager's name).
+  DECIDED_FOR
 }
 
 model User {
@@ -127,8 +131,30 @@ model User {
   articles         KbArticle[]
   auditLogs        AuditLog[]
 
+  delegationsGiven    ApprovalDelegation[] @relation("DelegationManager")
+  delegationsReceived ApprovalDelegation[] @relation("DelegationStandIn")
+
   @@index([role, isActive])
   @@map("tbl_users")
+}
+
+// A manager who is away names another manager to approve in their place for a period of time.
+model ApprovalDelegation {
+  id         String    @id @default(cuid())
+  managerId  String    @map("manager_id")
+  delegateId String    @map("delegate_id")
+  startsAt   DateTime  @map("starts_at")
+  endsAt     DateTime  @map("ends_at")
+  // Ended early by hand; the row is kept so the history shows who stood in when.
+  revokedAt  DateTime? @map("revoked_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  manager  User @relation("DelegationManager", fields: [managerId], references: [id], onDelete: Cascade)
+  delegate User @relation("DelegationStandIn", fields: [delegateId], references: [id], onDelete: Cascade)
+
+  @@index([managerId, endsAt])
+  @@index([delegateId, endsAt])
+  @@map("tbl_approval_delegations")
 }
 
 model ServiceRequest {
@@ -153,6 +179,10 @@ model ServiceRequest {
   managerApprovedAt DateTime? @map("manager_approved_at")
   decidedById       String?   @map("decided_by_id")
   decidedAt         DateTime? @map("decided_at")
+  // While waiting for approval: when the approver asked the requester for more information (cleared by the answer),
+  // and when the requester last answered. The approver's waiting time counts from the answer.
+  infoRequestedAt   DateTime? @map("info_requested_at")
+  infoAnsweredAt    DateTime? @map("info_answered_at")
   closedAt          DateTime? @map("closed_at")
   createdAt         DateTime  @default(now()) @map("created_at")
   updatedAt         DateTime  @updatedAt @map("updated_at")

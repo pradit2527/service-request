@@ -4,6 +4,7 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
 import { db } from "./db";
+import { approvalWait, approverWaitingSince } from "./approval-aging";
 import { dailyCounts, type DayCount } from "./insights";
 import { isKbCategory } from "./kb";
 import type { Role } from "./labels";
@@ -160,16 +161,92 @@ export function searchPeople(terms: string[], searcherId: string) {
   });
 }
 
-export function listPendingApprovals(userId: string) {
-  return db.serviceRequest.findMany({
-    where: { approverId: userId, status: "PENDING_APPROVAL", deletedAt: null },
-    select: rowSelect,
+const approvalSelect = {
+  ...rowSelect,
+  approverId: true,
+  infoRequestedAt: true,
+  infoAnsweredAt: true,
+  approver: { select: { name: true } },
+} satisfies Prisma.ServiceRequestSelect;
+
+export type ApprovalRow = Prisma.ServiceRequestGetPayload<{ select: typeof approvalSelect }>;
+
+/**
+ * What waits for this manager's approval: the requests that name them, and those of any manager they are standing in
+ * for right now. Never their own requests: nobody approves what they filed themselves.
+ */
+function waitingForApproval(viewer: Pick<Viewer, "id" | "actingFor">): Prisma.ServiceRequestWhereInput {
+  return {
+    approverId: { in: [viewer.id, ...(viewer.actingFor ?? [])] },
+    requesterId: { not: viewer.id },
+    status: "PENDING_APPROVAL",
+    deletedAt: null,
+  };
+}
+
+/** The oldest first, so the ones that have waited longest are at the top. */
+export function listPendingApprovals(viewer: Pick<Viewer, "id" | "actingFor">): Promise<ApprovalRow[]> {
+  return db.serviceRequest.findMany({ where: { ...waitingForApproval(viewer), deletedAt: null }, select: approvalSelect, orderBy: { createdAt: "asc" } });
+}
+
+export function countPendingApprovals(viewer: Pick<Viewer, "id" | "actingFor">) {
+  return db.serviceRequest.count({ where: { ...waitingForApproval(viewer), deletedAt: null } });
+}
+
+/**
+ * Requests that have been waiting on their approver for five working days or more, for system management. A request
+ * waiting on the requester (the approver asked for more information) is not counted: that wait is not the approver's.
+ */
+export async function listOverdueApprovals(now: Date = new Date()) {
+  const cal = getSlaCalendar();
+  const pending = await db.serviceRequest.findMany({
+    where: { status: "PENDING_APPROVAL", deletedAt: null, approverId: { not: null } },
+    select: {
+      id: true,
+      requestNo: true,
+      title: true,
+      createdAt: true,
+      infoRequestedAt: true,
+      infoAnsweredAt: true,
+      approver: { select: { id: true, name: true, isActive: true } },
+    },
     orderBy: { createdAt: "asc" },
+    take: 500,
+  });
+  const overdue = [];
+  for (const request of pending) {
+    const since = approverWaitingSince(request);
+    if (!since || !request.approver) continue;
+    const wait = approvalWait(since, now, cal);
+    if (wait.level === "overdue") overdue.push({ ...request, approver: request.approver, wait });
+  }
+  return overdue;
+}
+
+/** Stand-in periods that are running or still to come, in which this manager is the one away or the one standing in. */
+export function listDelegations(managerId: string, now: Date = new Date()) {
+  return db.approvalDelegation.findMany({
+    where: { OR: [{ managerId }, { delegateId: managerId }], revokedAt: null, endsAt: { gt: now } },
+    select: {
+      id: true,
+      managerId: true,
+      delegateId: true,
+      startsAt: true,
+      endsAt: true,
+      manager: { select: { name: true } },
+      delegate: { select: { name: true } },
+    },
+    orderBy: { startsAt: "asc" },
   });
 }
 
-export function countPendingApprovals(userId: string) {
-  return db.serviceRequest.count({ where: { approverId: userId, status: "PENDING_APPROVAL", deletedAt: null } });
+/** For the new-request form: which of these managers have a stand-in right now, and until when. */
+export function activeStandIns(managerIds: string[], now: Date = new Date()) {
+  if (managerIds.length === 0) return Promise.resolve([]);
+  return db.approvalDelegation.findMany({
+    where: { managerId: { in: managerIds }, revokedAt: null, startsAt: { lte: now }, endsAt: { gt: now }, delegate: { isActive: true } },
+    select: { managerId: true, endsAt: true, delegate: { select: { name: true } } },
+  });
 }
 
 export async function getEmployeeDashboard(viewer: Viewer) {

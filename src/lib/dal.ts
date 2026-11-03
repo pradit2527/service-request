@@ -21,6 +21,8 @@ export type CurrentUser = {
   phone: string | null;
   /** An administrator gave this person a temporary password: they must choose their own before using anything else. */
   mustChangePassword: boolean;
+  /** The managers who are away and have named this person to approve in their place right now (see permissions.ts). */
+  actingFor: string[];
 };
 
 export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
@@ -44,6 +46,18 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   });
   // Changing a password ends every session opened before it.
   if (!row || sessionPredatesPasswordChange(session.iat, row.passwordChangedAt)) return null;
+
+  // Only a manager can approve, so only a manager can stand in for another. Read on every request like the role is,
+  // so a stand-in begins and ends on the dot.
+  const now = new Date();
+  const standingIn =
+    row.role === "MANAGER"
+      ? await db.approvalDelegation.findMany({
+          where: { delegateId: row.id, revokedAt: null, startsAt: { lte: now }, endsAt: { gt: now }, manager: { isActive: true } },
+          select: { managerId: true },
+        })
+      : [];
+
   return {
     id: row.id,
     email: row.email,
@@ -53,6 +67,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     department: row.department,
     phone: row.phone,
     mustChangePassword: row.mustChangePassword,
+    actingFor: standingIn.map((delegation) => delegation.managerId),
   };
 });
 

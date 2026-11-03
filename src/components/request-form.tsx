@@ -73,7 +73,8 @@ function SectionTitle({ n, title, hint }: { n: number; title: string; hint?: str
   );
 }
 
-type Approver = { id: string; name: string; department: string | null };
+/** `note` is shown after the name: for a manager who is away, who approves in their place. */
+type Approver = { id: string; name: string; department: string | null; note?: string };
 
 /**
  * The requester is always the person who is signed in. `approvers` are the managers who can approve for them (never
@@ -397,6 +398,7 @@ export function RequestForm({
                           <option key={a.id} value={a.id}>
                             {a.name}
                             {a.department ? ` (${a.department})` : ""}
+                            {a.note ? ` · ${a.note}` : ""}
                           </option>
                         ))}
                       </select>

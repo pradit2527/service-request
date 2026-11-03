@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { deleteUser } from "@/app/actions/admin-users";
 import { ConfirmActionButton } from "@/components/confirm-action-button";
+import { DelegationCard } from "@/components/delegation-card";
 import { TemporaryPasswordForm } from "@/components/temporary-password-form";
 import { UserForm } from "@/components/user-form";
 import { requireSystemManager } from "@/lib/dal";
@@ -11,6 +12,7 @@ import { db } from "@/lib/db";
 import { adminEmails } from "@/lib/env";
 import { getT } from "@/lib/i18n-server";
 import { canModifyUser, canSetPassword, isAdmin } from "@/lib/permissions";
+import { listApprovers, listDelegations } from "@/lib/queries";
 import { cardClass } from "@/lib/ui";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -33,6 +35,8 @@ export default async function EditUserPage({ params }: { params: Promise<{ id: s
   const verdict = canModifyUser(actor, user, { role: user.role, isActive: user.isActive });
   const readOnly = !verdict.ok && verdict.reason === "admin-protected";
   const isSelf = actor.id === user.id;
+  const showDelegation = isAdmin(actor) && user.role === "MANAGER" && user.isActive;
+  const [delegations, standInCandidates] = showDelegation ? await Promise.all([listDelegations(user.id), listApprovers(user.id)]) : [[], []];
 
   return (
     <div className="mx-auto max-w-4xl space-y-5">
@@ -63,6 +67,11 @@ export default async function EditUserPage({ params }: { params: Promise<{ id: s
           </p>
           <TemporaryPasswordForm userId={user.id} />
         </section>
+      )}
+
+      {/* An administrator can set or cancel a stand-in for a manager, for example one who is ill and cannot do it. */}
+      {isAdmin(actor) && user.role === "MANAGER" && user.isActive && (
+        <DelegationCard managerId={user.id} delegations={delegations} candidates={standInCandidates} canEdit />
       )}
 
       {!readOnly && !isSelf && (

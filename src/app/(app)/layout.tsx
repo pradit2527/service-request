@@ -11,7 +11,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const user = await requireSignedInUser();
   const t = await getT();
   const [pendingApprovals, myTasks] = await Promise.all([
-    isManager(user) ? countPendingApprovals(user.id) : 0,
+    isManager(user) ? countPendingApprovals(user) : 0,
     isStaff(user) ? countMyTasks(user.id) : 0,
   ]);
 

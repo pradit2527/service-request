@@ -7,7 +7,8 @@ import { TypeIcon } from "@/components/type-icon";
 import { requiresManagerApproval } from "@/lib/approval";
 import { requireUser } from "@/lib/dal";
 import { getI18n, getT } from "@/lib/i18n-server";
-import { listApprovers } from "@/lib/queries";
+import { formatDate } from "@/lib/labels";
+import { activeStandIns, listApprovers } from "@/lib/queries";
 import { REQUEST_CATEGORIES, REQUEST_TYPE_DEFS, isRequestType } from "@/lib/request-types";
 import { todayBangkok } from "@/lib/request-number";
 import { classifyTier, formatFulfillmentRange } from "@/lib/sla";
@@ -141,7 +142,22 @@ export default async function NewRequestPage({ searchParams }: { searchParams: P
 
   const def = REQUEST_TYPE_DEFS[type];
   // The requester is whoever is signed in, so the approvers are the managers other than themselves.
-  const approvers = await listApprovers(user.id);
+  const approverList = await listApprovers(user.id);
+  // A manager who is away shows who approves in their place, so the requester knows who will actually see the request.
+  const standIns = await activeStandIns(approverList.map((approver) => approver.id));
+  const approvers = approverList.map((approver) => {
+    const standIn = standIns.find((s) => s.managerId === approver.id);
+    if (!standIn) return approver;
+    const until = formatDate(new Date(standIn.endsAt.getTime() - 24 * 60 * 60 * 1000), lang);
+    return {
+      ...approver,
+      note: t(
+        `ไม่อยู่ — ${standIn.delegate.name} อนุมัติแทนถึง ${until}`,
+        `ບໍ່ຢູ່ — ${standIn.delegate.name} ອະນຸມັດແທນຮອດ ${until}`,
+        `away — ${standIn.delegate.name} approves until ${until}`,
+      ),
+    };
+  });
 
   return (
     <div className="mx-auto max-w-5xl space-y-5 2xl:max-w-7xl">

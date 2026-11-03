@@ -6,10 +6,11 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import type { ActionState } from "@/lib/action-state";
 import { requiresManagerApproval } from "@/lib/approval";
-import { requireStaff, requireUser } from "@/lib/dal";
+import { requireStaff, requireUser, type CurrentUser } from "@/lib/dal";
 import { db } from "@/lib/db";
 import type { Translate } from "@/lib/i18n";
 import { getI18n } from "@/lib/i18n-server";
+import { selectedIds } from "@/lib/bulk-select";
 import { formatDate } from "@/lib/labels";
 import {
   allowedStatusChanges,
@@ -18,6 +19,7 @@ import {
   canDecideAsManager,
   canPostInternalNote,
   canViewRequest,
+  isStandingIn,
   isStaff,
 } from "@/lib/permissions";
 import { counterKey, currentYearBangkok, formatRequestNo, todayBangkok } from "@/lib/request-number";
@@ -263,7 +265,7 @@ export async function addComment(_prev: ActionState, formData: FormData): Promis
 
   const request = await db.serviceRequest.findFirst({
     where: { id: requestId, deletedAt: null },
-    select: { id: true, requesterId: true, approverId: true, status: true, ...slaFields },
+    select: { id: true, requesterId: true, approverId: true, status: true, infoRequestedAt: true, ...slaFields },
   });
   if (!request || !canViewRequest(user, request)) return { error: notFoundMessage(t) };
   if (!canComment(user, request)) {
@@ -285,6 +287,15 @@ export async function addComment(_prev: ActionState, formData: FormData): Promis
     // A public message from IT is the first response to the requester.
     if (isStaff(user) && !isInternal && !request.firstResponseAt && request.status !== "PENDING_APPROVAL") {
       await tx.serviceRequest.updateMany({ where: { id: requestId, firstResponseAt: null }, data: { firstResponseAt: now } });
+    }
+
+    // The requester answering the approver's question puts the request back in the approver's queue, and the approver's
+    // waiting time counts from this moment.
+    if (!isInternal && request.requesterId === user.id && request.status === "PENDING_APPROVAL" && request.infoRequestedAt !== null) {
+      await tx.serviceRequest.updateMany({
+        where: { id: requestId, status: "PENDING_APPROVAL", infoRequestedAt: { not: null } },
+        data: { infoRequestedAt: null, infoAnsweredAt: now },
+      });
     }
 
     // The requester answering a "need info" request puts it back in the IT team's queue and restarts the SLA clock.
@@ -594,7 +605,7 @@ export async function changeSlaTier(_prev: ActionState, formData: FormData): Pro
 function managerSchema(t: Translate) {
   return z.object({
     requestId: z.string().min(1),
-    decision: z.enum(["approve", "reject"], { error: t("ข้อมูลไม่ถูกต้อง", "ຂໍ້ມູນບໍ່ຖືກຕ້ອງ", "Invalid data") }),
+    decision: z.enum(["approve", "reject", "ask"], { error: t("ข้อมูลไม่ถูกต้อง", "ຂໍ້ມູນບໍ່ຖືກຕ້ອງ", "Invalid data") }),
     note: z
       .string()
       .trim()
@@ -602,23 +613,21 @@ function managerSchema(t: Translate) {
   });
 }
 
-export async function decideByManager(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  const { t } = await getI18n();
-  const user = await requireUser();
+type Decision = "approve" | "reject" | "ask";
 
-  const parsed = managerSchema(t).safeParse({
-    requestId: formData.get("requestId") ?? "",
-    decision: formData.get("decision") ?? "",
-    note: formData.get("note") ?? "",
-  });
-  if (!parsed.success) {
-    return { error: t("ข้อมูลไม่ถูกต้อง", "ຂໍ້ມູນບໍ່ຖືກຕ້ອງ", "Invalid data"), fieldErrors: firstIssuePerField(parsed.error) };
-  }
-  const { requestId, decision, note } = parsed.data;
-
+/**
+ * One decision of the approver (or of the manager standing in for them) on one request. The decision on the request
+ * page and approving several at once both go through here, so they obey exactly the same rules.
+ *   approve - the request goes to the IT queue
+ *   reject  - final, with a reason for the requester
+ *   ask     - the request stays where it is and the requester is asked for more information; their answer puts it back
+ *             in the approver's queue (this is not the "need information" status of the IT team, which would let IT start
+ *             the work without an approval)
+ */
+async function applyDecision(user: CurrentUser, requestId: string, decision: Decision, note: string, t: Translate): Promise<ActionState> {
   const request = await db.serviceRequest.findFirst({
     where: { id: requestId, deletedAt: null },
-    select: { id: true, requesterId: true, approverId: true, status: true, ...slaFields },
+    select: { id: true, requesterId: true, approverId: true, status: true, ...slaFields, approver: { select: { name: true } } },
   });
   if (!request || !canViewRequest(user, request)) return { error: notFoundMessage(t) };
   if (!canDecideAsManager(user, request)) {
@@ -635,27 +644,47 @@ export async function decideByManager(_prev: ActionState, formData: FormData): P
       fieldErrors: { note: t("กรุณาระบุเหตุผลที่ไม่อนุมัติ", "ກະລຸນາລະບຸເຫດຜົນທີ່ບໍ່ອະນຸມັດ", "Please enter the reason for rejecting") },
     };
   }
+  if (decision === "ask" && !note) {
+    return {
+      fieldErrors: {
+        note: t(
+          "กรุณาพิมพ์สิ่งที่ต้องการให้ผู้ขอแจ้งเพิ่มเติม",
+          "ກະລຸນາພິມສິ່ງທີ່ຕ້ອງການໃຫ້ຜູ້ຂໍແຈ້ງເພີ່ມເຕີມ",
+          "Please write what you need the requester to tell you",
+        ),
+      },
+    };
+  }
 
   const now = new Date();
-  const to = decision === "approve" ? "SUBMITTED" : "REJECTED";
-  const patch = slaPatchForStatusChange({
-    tier: request.slaTier,
-    createdAt: request.createdAt,
-    pausedAt: request.slaPausedAt,
-    pausedMinutes: request.slaPausedMinutes,
-    firstResponseAt: request.firstResponseAt,
-    to,
-    now,
-    cal: getSlaCalendar(),
-  });
-
-  const data: Prisma.ServiceRequestUpdateManyMutationInput =
-    decision === "approve"
-      ? { status: "SUBMITTED", managerApprovedAt: now, ...patch }
-      : { status: "REJECTED", closedAt: now, decidedAt: now, ...patch };
+  const standsIn = isStandingIn(user, request);
 
   try {
     await db.$transaction(async (tx) => {
+      if (decision === "ask") {
+        const updated = await tx.serviceRequest.updateMany({ where: { id: requestId, status: "PENDING_APPROVAL" }, data: { infoRequestedAt: now } });
+        if (updated.count !== 1) throw new StaleRequestError();
+        await tx.requestEvent.create({ data: { requestId, actorId: user.id, action: "INFO_REQUESTED" } });
+        await tx.requestComment.create({ data: { requestId, authorId: user.id, body: note, isInternal: false } });
+        return;
+      }
+
+      const to = decision === "approve" ? "SUBMITTED" : "REJECTED";
+      const patch = slaPatchForStatusChange({
+        tier: request.slaTier,
+        createdAt: request.createdAt,
+        pausedAt: request.slaPausedAt,
+        pausedMinutes: request.slaPausedMinutes,
+        firstResponseAt: request.firstResponseAt,
+        to,
+        now,
+        cal: getSlaCalendar(),
+      });
+      const data: Prisma.ServiceRequestUpdateManyMutationInput =
+        decision === "approve"
+          ? { status: "SUBMITTED", managerApprovedAt: now, infoRequestedAt: null, ...patch }
+          : { status: "REJECTED", closedAt: now, decidedAt: now, infoRequestedAt: null, ...patch };
+
       const updated = await tx.serviceRequest.updateMany({
         where: { id: requestId, status: "PENDING_APPROVAL" },
         data: decision === "reject" ? { ...data, decidedById: user.id } : data,
@@ -665,6 +694,10 @@ export async function decideByManager(_prev: ActionState, formData: FormData): P
       await tx.requestEvent.create({
         data: { requestId, actorId: user.id, action: "STATUS_CHANGED", fromValue: "PENDING_APPROVAL", toValue: to },
       });
+      // The timeline then says whose place the stand-in took.
+      if (standsIn) {
+        await tx.requestEvent.create({ data: { requestId, actorId: user.id, action: "DECIDED_FOR", toValue: request.approver?.name ?? null } });
+      }
       if (note) await tx.requestComment.create({ data: { requestId, authorId: user.id, body: note, isInternal: false } });
     });
   } catch (error) {
@@ -674,6 +707,70 @@ export async function decideByManager(_prev: ActionState, formData: FormData): P
 
   revalidateRequest(requestId);
   return { ok: true };
+}
+
+export async function decideByManager(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const { t } = await getI18n();
+  const user = await requireUser();
+
+  const parsed = managerSchema(t).safeParse({
+    requestId: formData.get("requestId") ?? "",
+    decision: formData.get("decision") ?? "",
+    note: formData.get("note") ?? "",
+  });
+  if (!parsed.success) {
+    return { error: t("ข้อมูลไม่ถูกต้อง", "ຂໍ້ມູນບໍ່ຖືກຕ້ອງ", "Invalid data"), fieldErrors: firstIssuePerField(parsed.error) };
+  }
+  const { requestId, decision, note } = parsed.data;
+  return applyDecision(user, requestId, decision, note, t);
+}
+
+/**
+ * Approves every ticked request in one go, each by the same rules as approving it alone, with an optional message to all
+ * the requesters. Rejecting is not offered here: a rejection needs its own reason. A request that someone else already
+ * handled, or that the manager may not decide, is skipped and counted.
+ */
+export async function approveMany(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const { t } = await getI18n();
+  const user = await requireUser();
+
+  const ids = selectedIds(formData.getAll("requestId"));
+  if (ids.length === 0) {
+    return { error: t("กรุณาเลือกคำขออย่างน้อย 1 รายการ", "ກະລຸນາເລືອກຄຳຂໍຢ່າງໜ້ອຍ 1 ລາຍການ", "Please tick at least one request") };
+  }
+  const note = String(formData.get("note") ?? "").trim();
+  if (note.length > 2000) {
+    return { fieldErrors: { note: t("ข้อความยาวเกิน 2,000 ตัวอักษร", "ຂໍ້ຄວາມຍາວເກີນ 2,000 ຕົວອັກສອນ", "Message must be 2,000 characters or fewer") } };
+  }
+
+  let approved = 0;
+  for (const id of ids) {
+    const result = await applyDecision(user, id, "approve", note, t);
+    if (result?.ok) approved += 1;
+  }
+  const skipped = ids.length - approved;
+
+  revalidatePath("/approvals");
+  if (approved === 0) {
+    return {
+      error: t(
+        "ไม่มีรายการใดที่อนุมัติได้ อาจมีคนดำเนินการไปแล้ว กรุณารีเฟรชหน้า",
+        "ບໍ່ມີລາຍການໃດທີ່ອະນຸມັດໄດ້ ອາດມີຄົນດຳເນີນການແລ້ວ ກະລຸນາໂຫຼດໜ້າໃໝ່",
+        "None of them could be approved; someone may have handled them already. Please refresh",
+      ),
+    };
+  }
+  return {
+    ok: true,
+    info:
+      skipped === 0
+        ? t(`อนุมัติแล้ว ${approved} รายการ`, `ອະນຸມັດແລ້ວ ${approved} ລາຍການ`, `Approved ${approved} ${approved === 1 ? "request" : "requests"}`)
+        : t(
+            `อนุมัติแล้ว ${approved} รายการ ข้าม ${skipped} รายการ (มีคนดำเนินการแล้วหรือคุณไม่มีสิทธิ์)`,
+            `ອະນຸມັດແລ້ວ ${approved} ລາຍການ ຂ້າມ ${skipped} ລາຍການ (ມີຄົນດຳເນີນການແລ້ວ ຫຼື ທ່ານບໍ່ມີສິດ)`,
+            `Approved ${approved}, skipped ${skipped} (already handled, or you may not decide them)`,
+          ),
+  };
 }
 
 // ---------------------------------------------------------------------------------------------

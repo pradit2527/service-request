@@ -1,4 +1,16 @@
-import { ArrowRightLeft, FilePlus2, Gauge, Pencil, ShieldCheck, Trash2, Undo2, UserCheck, UserCog, type LucideIcon } from "lucide-react";
+import {
+  ArrowRightLeft,
+  FilePlus2,
+  Gauge,
+  MessageCircleQuestion,
+  Pencil,
+  ShieldCheck,
+  Trash2,
+  Undo2,
+  UserCheck,
+  UserCog,
+  type LucideIcon,
+} from "lucide-react";
 import type { Translate } from "@/lib/i18n";
 import { getI18n } from "@/lib/i18n-server";
 import { EDITABLE_REQUEST_FIELDS, REQUEST_EDIT_FIELD_LABEL } from "@/lib/admin-rules";
@@ -103,6 +115,26 @@ function describeEvent(event: Event, t: Translate): { text: string; icon: Lucide
       return { text: t("ลบคำขอ", "ລຶບຄຳຂໍ", "deleted the request"), icon: Trash2, tone: "bg-red-100 text-red-600" };
     case "RESTORED":
       return { text: t("กู้คืนคำขอ", "ກູ້ຄືນຄຳຂໍ", "restored the request"), icon: Undo2, tone: "bg-emerald-100 text-emerald-600" };
+    case "INFO_REQUESTED":
+      return {
+        text: t(
+          "ขอข้อมูลเพิ่มเติมจากผู้ขอ (ยังรอการอนุมัติอยู่)",
+          "ຂໍຂໍ້ມູນເພີ່ມເຕີມຈາກຜູ້ຂໍ (ຍັງລໍຖ້າການອະນຸມັດຢູ່)",
+          "asked the requester for more information (still waiting for approval)",
+        ),
+        icon: MessageCircleQuestion,
+        tone: "bg-amber-100 text-amber-600",
+      };
+    case "DECIDED_FOR":
+      return {
+        text: t(
+          `พิจารณาแทน ${event.toValue ?? "-"} (ผู้แทนอนุมัติ)`,
+          `ພິຈາລະນາແທນ ${event.toValue ?? "-"} (ຜູ້ແທນອະນຸມັດ)`,
+          `decided on behalf of ${event.toValue ?? "-"} (stand-in approver)`,
+        ),
+        icon: UserCog,
+        tone: "bg-indigo-100 text-indigo-600",
+      };
   }
 }
 

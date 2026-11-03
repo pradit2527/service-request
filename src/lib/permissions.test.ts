@@ -15,6 +15,7 @@ import {
   canSetPassword,
   canViewRequest,
   isManager,
+  isStandingIn,
   isStaff,
   type Viewer,
 } from "./permissions";
@@ -290,5 +291,47 @@ describe("setting another person's temporary password", () => {
 
   it("is not how a person changes their own password: that is the profile page", () => {
     expect(canSetPassword(admin, { id: admin.id, role: "ADMIN" as const })).toBe(false);
+  });
+});
+
+describe("a manager standing in for one who is away", () => {
+  const away: Viewer = { id: "u-away", role: "MANAGER" };
+  const standIn: Viewer = { id: "u-stand", role: "MANAGER", actingFor: ["u-away"] };
+  const waiting = { requesterId: employee.id, approverId: away.id, status: "PENDING_APPROVAL" as const };
+
+  it("can see, comment on and decide the requests of the manager they stand in for", () => {
+    expect(canViewRequest(standIn, waiting)).toBe(true);
+    expect(canComment(standIn, waiting)).toBe(true);
+    expect(canDecideAsManager(standIn, waiting)).toBe(true);
+  });
+
+  it("cannot decide for a manager they do not stand in for", () => {
+    expect(canDecideAsManager({ ...standIn, actingFor: ["u-someone-else"] }, waiting)).toBe(false);
+    expect(canDecideAsManager({ ...standIn, actingFor: [] }, waiting)).toBe(false);
+    expect(canDecideAsManager({ id: "u-stand", role: "MANAGER" }, waiting)).toBe(false);
+  });
+
+  it("cannot approve a request they filed themselves, even for the manager they stand in for", () => {
+    expect(canDecideAsManager(standIn, { ...waiting, requesterId: standIn.id })).toBe(false);
+  });
+
+  it("stops being able to decide once their role is no longer manager", () => {
+    expect(canDecideAsManager({ ...standIn, role: "EMPLOYEE" }, waiting)).toBe(false);
+    expect(canDecideAsManager({ ...standIn, role: "IT_STAFF" }, waiting)).toBe(false);
+  });
+
+  it("only decides what is still waiting for approval", () => {
+    expect(canDecideAsManager(standIn, { ...waiting, status: "SUBMITTED" })).toBe(false);
+  });
+
+  it("is told apart from the approver the requester picked", () => {
+    expect(isStandingIn(standIn, waiting)).toBe(true);
+    expect(isStandingIn(away, waiting)).toBe(false);
+    expect(isStandingIn(standIn, { ...waiting, approverId: standIn.id })).toBe(false);
+    expect(isStandingIn(standIn, { ...waiting, approverId: null })).toBe(false);
+  });
+
+  it("does not let the manager who is away lose their own right to decide", () => {
+    expect(canDecideAsManager(away, waiting)).toBe(true);
   });
 });
