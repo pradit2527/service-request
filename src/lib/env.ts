@@ -23,8 +23,14 @@ export function itStaffEmails(): string[] {
   return csv(process.env.IT_STAFF_EMAILS);
 }
 
+/**
+ * The "pick a name and sign in" box, which needs no password. Off in production unless ALLOW_DEV_LOGIN_IN_PRODUCTION="true"
+ * is set as well as ENABLE_DEV_LOGIN="true": while it is on, anyone who can open the site can sign in as any active user,
+ * administrators included. Meant for a test installation on a network you trust.
+ */
 export function devLoginEnabled(): boolean {
-  return process.env.NODE_ENV !== "production" && process.env.ENABLE_DEV_LOGIN === "true";
+  if (process.env.ENABLE_DEV_LOGIN !== "true") return false;
+  return process.env.NODE_ENV !== "production" || process.env.ALLOW_DEV_LOGIN_IN_PRODUCTION === "true";
 }
 
 export function googleCredentials(): { clientId: string; clientSecret: string } | null {

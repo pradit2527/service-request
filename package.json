@@ -17,6 +17,8 @@
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
     "admin:create": "tsx prisma/create-admin.ts",
+    "users:export": "tsx prisma/export-users.ts",
+    "users:import": "tsx prisma/import-users.ts",
     "postinstall": "prisma generate",
     "test:e2e": "jest --config ./cotester/jest/e2e.config.ts",
     "e2e": "playwright test"

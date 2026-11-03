@@ -1,7 +1,41 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cookieSecure, isAllowedAccount } from "./env";
+import { cookieSecure, devLoginEnabled, isAllowedAccount } from "./env";
 
 afterEach(() => vi.unstubAllEnvs());
+
+describe("devLoginEnabled", () => {
+  it("is on while developing when ENABLE_DEV_LOGIN is true, and off otherwise", () => {
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("ENABLE_DEV_LOGIN", "true");
+    expect(devLoginEnabled()).toBe(true);
+    vi.stubEnv("ENABLE_DEV_LOGIN", "false");
+    expect(devLoginEnabled()).toBe(false);
+    vi.stubEnv("ENABLE_DEV_LOGIN", "");
+    expect(devLoginEnabled()).toBe(false);
+  });
+
+  it("stays off in production even when ENABLE_DEV_LOGIN is true, because anyone who can open the site could then sign in as anybody", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("ENABLE_DEV_LOGIN", "true");
+    expect(devLoginEnabled()).toBe(false);
+  });
+
+  it("can be switched on in production only by a second, deliberate setting", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("ENABLE_DEV_LOGIN", "true");
+    vi.stubEnv("ALLOW_DEV_LOGIN_IN_PRODUCTION", "true");
+    expect(devLoginEnabled()).toBe(true);
+    vi.stubEnv("ALLOW_DEV_LOGIN_IN_PRODUCTION", "yes");
+    expect(devLoginEnabled()).toBe(false);
+  });
+
+  it("does not turn on from the production setting alone", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("ENABLE_DEV_LOGIN", "false");
+    vi.stubEnv("ALLOW_DEV_LOGIN_IN_PRODUCTION", "true");
+    expect(devLoginEnabled()).toBe(false);
+  });
+});
 
 describe("isAllowedAccount", () => {
   it("accepts an email in a company domain", () => {
