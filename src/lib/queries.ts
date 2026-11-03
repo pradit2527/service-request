@@ -8,6 +8,7 @@ import { dailyCounts, type DayCount } from "./insights";
 import { isKbCategory } from "./kb";
 import type { Role } from "./labels";
 import { paginate } from "./pagination";
+import { MAX_PEOPLE_RESULTS, peopleWhere } from "./people-search";
 import { canEditKb, canManageSystem, canViewRequest, isStaff, type Viewer } from "./permissions";
 import { OPEN_STATUSES, breachedWhere } from "./request-where";
 import type { RequestType } from "./request-types";
@@ -146,6 +147,16 @@ export function listApprovers(excludeUserId: string) {
     where: { isActive: true, role: "MANAGER", id: { not: excludeUserId } },
     select: { id: true, name: true, department: true },
     orderBy: { name: "asc" },
+  });
+}
+
+/** People for the "actual user" field: name and department only, nothing else about them leaves the server. */
+export function searchPeople(terms: string[], searcherId: string) {
+  return db.user.findMany({
+    where: peopleWhere(terms, searcherId),
+    select: { id: true, name: true, department: true },
+    orderBy: { name: "asc" },
+    take: MAX_PEOPLE_RESULTS,
   });
 }
 

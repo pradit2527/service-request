@@ -18,6 +18,7 @@ import {
 import { submitWithoutReset } from "@/lib/submit-without-reset";
 import { btnSecondary, cardClass, errorTextClass, helpTextClass, inputClass, inputErrorClass, labelClass } from "@/lib/ui";
 import { Avatar } from "./avatar";
+import { PersonSearchInput } from "./person-search-input";
 
 type FieldProps = {
   id: string;
@@ -191,16 +192,21 @@ export function RequestForm({
                     id="requestedForName"
                     label={t("ชื่อ-นามสกุลและแผนกของผู้ใช้งานจริง", "ຊື່-ນາມສະກຸນ ແລະ ພະແນກຂອງຜູ້ໃຊ້ງານຈິງ", "Full name and department of the actual user")}
                     required
+                    help={t(
+                      "พิมพ์ชื่อเพื่อค้นหาจากรายชื่อในระบบแล้วเลือกจากรายการ หรือพิมพ์เองหากยังไม่มีในระบบ",
+                      "ພິມຊື່ເພື່ອຄົ້ນຫາຈາກລາຍຊື່ໃນລະບົບແລ້ວເລືອກຈາກລາຍການ ຫຼື ພິມເອງຖ້າຍັງບໍ່ມີໃນລະບົບ",
+                      "Type a name to search the people in the system and pick one from the list, or type it yourself if they are not in the system yet.",
+                    )}
                     error={errors.requestedForName}
                   >
                     {(a11y) => (
-                      <input
+                      <PersonSearchInput
                         {...a11y}
-                        type="text"
                         maxLength={150}
                         placeholder={t("เช่น สมหญิง รักงาน · ฝ่ายการเงิน", "ເຊັ່ນ ສົມຍິງ ຮັກງານ · ພະແນກການເງິນ", "e.g. Somying Rakngan · Finance")}
+                        listLabel={t("รายชื่อที่พบ", "ລາຍຊື່ທີ່ພົບ", "Matching people")}
                         value={core.requestedForName}
-                        onChange={(e) => setCore((c) => ({ ...c, requestedForName: e.target.value }))}
+                        onChange={(value) => setCore((c) => ({ ...c, requestedForName: value }))}
                       />
                     )}
                   </Field>
