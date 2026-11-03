@@ -428,7 +428,8 @@ async function StaffView({ firstName }: Pick<ViewProps, "firstName">) {
       <div className="animate-fade-up grid gap-5 motion-reduce:animate-none lg:grid-cols-5" style={{ animationDelay: "120ms" }}>
         <div className="min-w-0 space-y-5 lg:col-span-3">
           <TrendCard daily={insights.daily} />
-          <div className="grid gap-5 md:grid-cols-2">
+          {/* grid-cols-1 lets the cards shrink to the screen, so a long type or assignee name is cut off instead of widening the page. */}
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
             <TypeBreakdownCard byType={insights.byType} />
             <WorkloadCard workload={insights.workload} />
           </div>
