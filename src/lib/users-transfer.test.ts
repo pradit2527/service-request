@@ -11,8 +11,9 @@ describe("buildTransferFile and parseTransferFile", () => {
   });
 
   it("carries no secrets: only the fields a person is made of", () => {
-    const withSecrets = { ...alex, passwordHash: "scrypt$1$2$3$4$5", googleSub: "123", failedLoginCount: 3 } as TransferUser;
+    const withSecrets = { ...alex, passwordHash: "scrypt$1$2$3$4$5", googleSub: "123", failedLoginCount: 3, temporaryPassword: "hunter2hunter2" } as TransferUser;
     const text = buildTransferFile([withSecrets], new Date("2026-11-03T08:00:00Z"));
+    expect(text).not.toContain("hunter2");
     expect(text).not.toContain("scrypt");
     expect(text).not.toContain("googleSub");
     expect(text).not.toContain("failedLoginCount");
@@ -28,6 +29,21 @@ describe("buildTransferFile and parseTransferFile", () => {
       ok: true,
       users: [{ email: "alex@aidc.test", name: "Alex", department: null, phone: null, role: "EMPLOYEE", isActive: false }],
     });
+  });
+
+  it("reads a temporary password that is typed into a file by hand for a new person", () => {
+    const text = JSON.stringify({ format: "service-request-users", version: 1, users: [{ ...alex, temporaryPassword: "first-temp-pass" }] });
+    expect(parseTransferFile(text)).toEqual({ ok: true, users: [{ ...alex, temporaryPassword: "first-temp-pass" }] });
+  });
+
+  it("holds a temporary password to the same rules as any password, and never repeats it in the error", () => {
+    const text = JSON.stringify({ format: "service-request-users", version: 1, users: [{ ...alex, temporaryPassword: "abc123" }] });
+    const result = parseTransferFile(text);
+    expect(result.ok).toBe(false);
+    expect(!result.ok && result.error).toContain("alex@aidc.test");
+    expect(!result.ok && result.error).toContain("temporaryPassword");
+    expect(!result.ok && result.error).toContain("8 characters");
+    expect(!result.ok && result.error).not.toContain("abc123");
   });
 
   it("refuses text that is not JSON", () => {

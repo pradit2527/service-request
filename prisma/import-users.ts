@@ -2,12 +2,17 @@
 // account is left exactly as they are. The new accounts have no password: sign in through the name picker if it is
 // switched on, or have an administrator set a temporary password at /admin/users.
 //
+// A file edited by hand may give a new person a "temporaryPassword" (at least 8 characters). Only its hash is stored,
+// and the person must choose their own password at the first sign-in. It is never applied to an account that already
+// exists, and it is never printed. Delete such a file once it has been imported.
+//
 //   npm run users:import -- people.json            create the missing people
 //   npm run users:import -- people.json --dry-run  only show what would be created
 
 import { readFileSync } from "node:fs";
 import { PrismaClient } from "@prisma/client";
 import { databaseLabel } from "../src/lib/admin-bootstrap";
+import { hashPassword } from "../src/lib/password-hash";
 import { parseTransferFile, planImport } from "../src/lib/users-transfer";
 
 try {
@@ -33,14 +38,29 @@ async function main() {
     const existing = await db.user.findMany({ select: { email: true } });
     const plan = planImport(parsed.users, new Set(existing.map((user) => user.email)));
 
-    for (const user of plan.skip) console.log(`  exists  ${user.name} <${user.email}> (left as it is)`);
-    for (const user of plan.create) console.log(`  create  ${user.role.padEnd(9)} ${user.name} <${user.email}>`);
+    for (const user of plan.skip) {
+      const ignored = user.temporaryPassword ? ", the password in the file was not used" : "";
+      console.log(`  exists  ${user.name} <${user.email}> (left as it is${ignored})`);
+    }
+    for (const user of plan.create) {
+      console.log(`  create  ${user.role.padEnd(9)} ${user.name} <${user.email}>${user.temporaryPassword ? " (temporary password, must change it at first sign-in)" : ""}`);
+    }
 
     if (dryRun) {
       console.log(`Dry run: ${plan.create.length} would be created, ${plan.skip.length} already exist. Nothing was changed.`);
       return;
     }
-    if (plan.create.length > 0) await db.user.createMany({ data: plan.create });
+    if (plan.create.length > 0) {
+      const now = new Date();
+      const data = await Promise.all(
+        plan.create.map(async ({ temporaryPassword, ...person }) =>
+          temporaryPassword
+            ? { ...person, passwordHash: await hashPassword(temporaryPassword), mustChangePassword: true, passwordChangedAt: now }
+            : person,
+        ),
+      );
+      await db.user.createMany({ data });
+    }
     console.log(`Done: ${plan.create.length} created, ${plan.skip.length} already existed.`);
   } finally {
     await db.$disconnect();

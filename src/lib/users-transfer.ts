@@ -1,13 +1,15 @@
 // Moving the list of people from one installation to another (prisma/export-users.ts, prisma/import-users.ts): what goes
 // into the file, how a file is read back, and which people an import creates. Pure module, so it is unit-testable.
 //
-// The file holds only who a person is: email, name, department, phone, role, active or not. Never a password, a Google
-// link or a sign-in counter. The people it creates have no password until an administrator or the person sets one.
+// An export holds only who a person is: email, name, department, phone, role, active or not. Never a password, a Google
+// link or a sign-in counter. The people an import creates have no password until an administrator or the person sets
+// one, unless the file was edited by hand to give a new person a `temporaryPassword`: the import stores only its hash
+// and makes the person choose their own at the first sign-in. That field is never written by an export.
 
 import { z } from "zod";
 import { makeT } from "./i18n";
 import { isRole, ROLES, type Role } from "./labels";
-import { departmentField, emailField, nameField, phoneField } from "./user-fields";
+import { departmentField, emailField, nameField, passwordField, phoneField } from "./user-fields";
 
 const t = makeT("en");
 
@@ -21,6 +23,8 @@ export type TransferUser = {
   phone: string | null;
   role: Role;
   isActive: boolean;
+  /** Only ever typed into a file by hand, for someone the import is about to create. */
+  temporaryPassword?: string;
 };
 
 const userSchema = z.object({
@@ -30,6 +34,7 @@ const userSchema = z.object({
   phone: phoneField(t).nullish().transform((value) => value || null),
   role: z.custom<Role>((value) => isRole(value), { error: `role must be one of ${ROLES.join(", ")}` }),
   isActive: z.boolean({ error: "isActive must be true or false" }),
+  temporaryPassword: passwordField(t).nullish().transform((value) => value ?? undefined),
 });
 
 /** The text of a transfer file for these people, sorted by email so two exports of the same people are identical. */
