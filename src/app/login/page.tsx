@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { Activity, ShieldCheck, Server, TriangleAlert } from "lucide-react";
+import { Activity, FlaskConical, ShieldCheck, Server, TriangleAlert } from "lucide-react";
 import { devLogin } from "@/app/actions/auth";
 import { LanguageSwitch } from "@/components/language-switch";
 import { Logo } from "@/components/logo";
@@ -13,6 +13,9 @@ import { getT } from "@/lib/i18n-server";
 import { ROLE_LABEL } from "@/lib/labels";
 import { safeNext } from "@/lib/safe-next";
 import { btnSecondary, inputClass, labelClass } from "@/lib/ui";
+
+// The last day of the test version, shown on the sign-in page as day/month/year. Change it here to extend the test.
+const TEST_VERSION_UNTIL = "06/11/2026";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getT();
@@ -193,6 +196,11 @@ export default async function LoginPage({
         <div className="absolute top-4 right-4">
           <LanguageSwitch variant="light" />
         </div>
+        {/* Above the form on a phone; at the top of the panel, under the language switch, on a wide screen. */}
+        <p className="mb-6 inline-flex items-center gap-2 rounded-full bg-amber-50 px-4 py-1.5 text-center text-sm font-medium text-amber-800 ring-1 ring-amber-200 ring-inset lg:absolute lg:top-16 lg:left-1/2 lg:mb-0 lg:-translate-x-1/2">
+          <FlaskConical className="h-4 w-4 shrink-0" aria-hidden />
+          {t(`Version Test ถึงวันที่ ${TEST_VERSION_UNTIL}`, `Version Test ຮອດວັນທີ ${TEST_VERSION_UNTIL}`, `Version Test until ${TEST_VERSION_UNTIL}`)}
+        </p>
         <div className="w-full max-w-sm">
           <div className="mb-8 flex items-center gap-4 lg:hidden">
             <Logo size="sm" />
