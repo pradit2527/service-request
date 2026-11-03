@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# AIDC Service Request: installs (or updates) the app on an Ubuntu server.
+# Service Request Management (SRM): installs (or updates) the app on an Ubuntu server.
 #
 #   bash setup-server.sh
 #
@@ -217,7 +217,7 @@ say "6/8 Service"
 NODE_BIN="$(command -v node)"
 sudo tee "/etc/systemd/system/${SERVICE}.service" >/dev/null <<EOF
 [Unit]
-Description=AIDC Service Request
+Description=Service Request Management (SRM)
 After=network-online.target postgresql.service
 Wants=network-online.target
 
