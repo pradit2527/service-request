@@ -1,12 +1,14 @@
 import { AppShell, type NavItem } from "@/components/app-shell";
-import { requireUser } from "@/lib/dal";
+import { requireSignedInUser } from "@/lib/dal";
 import { getT } from "@/lib/i18n-server";
 import { ROLE_LABEL } from "@/lib/labels";
 import { canManageSystem, isManager, isStaff } from "@/lib/permissions";
 import { countMyTasks, countPendingApprovals } from "@/lib/queries";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const user = await requireUser();
+  // Not requireUser(): someone with a temporary password still gets the menu and the profile page, where they replace it;
+  // every other page sends them back there.
+  const user = await requireSignedInUser();
   const t = await getT();
   const [pendingApprovals, myTasks] = await Promise.all([
     isManager(user) ? countPendingApprovals(user.id) : 0,

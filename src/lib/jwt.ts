@@ -9,7 +9,8 @@ export const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7; // 7 days
 export const OAUTH_COOKIE = "sr_oauth";
 export const OAUTH_MAX_AGE_SECONDS = 60 * 10; // 10 minutes
 
-export type SessionPayload = { sub: string };
+/** `iat` is when the session was opened, in whole seconds: a password change ends every older session. */
+export type SessionPayload = { sub: string; iat: number | undefined };
 export type OAuthPayload = { state: string; verifier: string; nonce: string; next: string };
 
 async function sign(payload: Record<string, unknown>, maxAgeSeconds: number): Promise<string> {
@@ -36,7 +37,7 @@ export function signSession(userId: string): Promise<string> {
 
 export async function verifySessionToken(token: string | undefined): Promise<SessionPayload | null> {
   const payload = await verify(token);
-  return payload && typeof payload.sub === "string" ? { sub: payload.sub } : null;
+  return payload && typeof payload.sub === "string" ? { sub: payload.sub, iat: typeof payload.iat === "number" ? payload.iat : undefined } : null;
 }
 
 export function signOAuthState(payload: OAuthPayload): Promise<string> {

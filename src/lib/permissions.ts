@@ -105,6 +105,14 @@ export function canModifyUser(actor: Viewer, target: UserTarget, edit: UserEdit)
   return { ok: true };
 }
 
+/**
+ * Setting another person's temporary password: administrators only (a manager who could would be able to take over
+ * an administrator's account), and never one's own, which is changed on the profile page.
+ */
+export function canSetPassword(actor: Viewer, target: { id: string; role: Role }): boolean {
+  return isAdmin(actor) && actor.id !== target.id;
+}
+
 export function canCreateUser(actor: Viewer, role: Role): boolean {
   return canManageSystem(actor) && (role !== "ADMIN" || isAdmin(actor));
 }

@@ -9,6 +9,8 @@ import { searchPeople } from "@/lib/queries";
 export async function GET(request: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  // Someone who still has to replace a temporary password may not look anyone up until they have.
+  if (user.mustChangePassword) return NextResponse.json({ error: "password change required" }, { status: 403 });
 
   const terms = searchTerms(request.nextUrl.searchParams.get("q"));
   const people = terms.length === 0 ? [] : await searchPeople(terms, user.id);

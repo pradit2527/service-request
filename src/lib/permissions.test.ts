@@ -12,6 +12,7 @@ import {
   commentAvailability,
   canModifyUser,
   canPostInternalNote,
+  canSetPassword,
   canViewRequest,
   isManager,
   isStaff,
@@ -272,5 +273,22 @@ describe("system management", () => {
     expect(canComment(manager, someoneElses)).toBe(false);
     const chosen = { requesterId: "u-x", approverId: manager.id, status: "PENDING_APPROVAL" as const };
     expect(canComment(manager, chosen)).toBe(true);
+  });
+});
+
+describe("setting another person's temporary password", () => {
+  it("is for administrators only: a manager who could do it could take over an administrator's account", () => {
+    const target = { id: "e2", role: "EMPLOYEE" as const };
+    expect([employee, staff, manager, admin].map((actor) => canSetPassword(actor, target))).toEqual([false, false, false, true]);
+    expect(canSetPassword(manager, { id: "a2", role: "ADMIN" as const })).toBe(false);
+  });
+
+  it("lets an administrator do it for any other account, administrators included", () => {
+    expect(canSetPassword(admin, { id: "a2", role: "ADMIN" as const })).toBe(true);
+    expect(canSetPassword(admin, { id: "m2", role: "MANAGER" as const })).toBe(true);
+  });
+
+  it("is not how a person changes their own password: that is the profile page", () => {
+    expect(canSetPassword(admin, { id: admin.id, role: "ADMIN" as const })).toBe(false);
   });
 });

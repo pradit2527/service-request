@@ -4,12 +4,13 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { deleteUser } from "@/app/actions/admin-users";
 import { ConfirmActionButton } from "@/components/confirm-action-button";
+import { TemporaryPasswordForm } from "@/components/temporary-password-form";
 import { UserForm } from "@/components/user-form";
 import { requireSystemManager } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { adminEmails } from "@/lib/env";
 import { getT } from "@/lib/i18n-server";
-import { canModifyUser, isAdmin } from "@/lib/permissions";
+import { canModifyUser, canSetPassword, isAdmin } from "@/lib/permissions";
 import { cardClass } from "@/lib/ui";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -49,6 +50,20 @@ export default async function EditUserPage({ params }: { params: Promise<{ id: s
         readOnly={readOnly}
         inAdminEmails={adminEmails().includes(user.email.toLowerCase())}
       />
+
+      {canSetPassword(actor, user) && (
+        <section className={`${cardClass} space-y-3 p-5 sm:p-6`}>
+          <h3 className="font-semibold text-slate-900">{t("รหัสผ่านชั่วคราว", "ລະຫັດຜ່ານຊົ່ວຄາວ", "Temporary password")}</h3>
+          <p className="text-sm text-slate-500">
+            {t(
+              "ให้ผู้ใช้เข้าสู่ระบบด้วยอีเมลและรหัสผ่านได้ ผู้ใช้ต้องเปลี่ยนรหัสนี้เมื่อเข้าครั้งแรก และอุปกรณ์ที่เข้าอยู่จะถูกออกจากระบบ ส่งรหัสให้ผู้ใช้เอง ระบบจะไม่แสดงรหัสนี้อีก",
+              "ໃຫ້ຜູ້ໃຊ້ເຂົ້າສູ່ລະບົບດ້ວຍອີເມວ ແລະ ລະຫັດຜ່ານໄດ້ ຜູ້ໃຊ້ຕ້ອງປ່ຽນລະຫັດນີ້ເມື່ອເຂົ້າຄັ້ງທຳອິດ ແລະ ອຸປະກອນທີ່ເຂົ້າຢູ່ຈະຖືກອອກຈາກລະບົບ ສົ່ງລະຫັດໃຫ້ຜູ້ໃຊ້ເອງ ລະບົບຈະບໍ່ສະແດງລະຫັດນີ້ອີກ",
+              "Lets this person sign in with their email and a password. They must replace it the first time they sign in, and any device they are signed in on is signed out. Give them the password yourself: it is not shown again.",
+            )}
+          </p>
+          <TemporaryPasswordForm userId={user.id} />
+        </section>
+      )}
 
       {!readOnly && !isSelf && (
         <section className={`${cardClass} space-y-3 p-5 sm:p-6`}>

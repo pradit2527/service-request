@@ -4,6 +4,7 @@ import { Activity, FlaskConical, ShieldCheck, Server, TriangleAlert } from "luci
 import { devLogin } from "@/app/actions/auth";
 import { LanguageSwitch } from "@/components/language-switch";
 import { Logo } from "@/components/logo";
+import { PasswordLoginForm } from "@/components/password-login-form";
 import { APP_NAME } from "@/lib/brand";
 import { SubmitButton } from "@/components/submit-button";
 import { getCurrentUser } from "@/lib/dal";
@@ -196,9 +197,10 @@ export default async function LoginPage({
         <div className="absolute top-4 right-4">
           <LanguageSwitch variant="light" />
         </div>
-        {/* Above the form, in the normal flow. On a wide screen that is also tall enough (44rem) it floats in the space above
-            the form instead: a sixth of the way down the panel, but never lower than a form-height above the centre. */}
-        <p className="mb-6 inline-flex items-center gap-2.5 rounded-full bg-amber-50 px-5 py-2 text-center text-base font-medium text-amber-800 ring-1 ring-amber-200 ring-inset lg:[@media(min-height:44rem)]:absolute lg:[@media(min-height:44rem)]:top-[clamp(4rem,16%,calc(50%_-_17.5rem))] lg:[@media(min-height:44rem)]:left-1/2 lg:[@media(min-height:44rem)]:mb-0 lg:[@media(min-height:44rem)]:w-max lg:[@media(min-height:44rem)]:-translate-x-1/2">
+        {/* Above the form, in the normal flow. On a wide screen that is also tall enough (58rem, room for the whole form) it
+            floats in the space above the form instead: a sixth of the way down the panel, but never lower than about
+            half a form-height (25.5rem) above the centre. */}
+        <p className="mb-6 inline-flex items-center gap-2.5 rounded-full bg-amber-50 px-5 py-2 text-center text-base font-medium text-amber-800 ring-1 ring-amber-200 ring-inset lg:[@media(min-height:58rem)]:absolute lg:[@media(min-height:58rem)]:top-[clamp(4rem,16%,calc(50%_-_25.5rem))] lg:[@media(min-height:58rem)]:left-1/2 lg:[@media(min-height:58rem)]:mb-0 lg:[@media(min-height:58rem)]:w-max lg:[@media(min-height:58rem)]:-translate-x-1/2">
           <FlaskConical className="h-5 w-5 shrink-0" aria-hidden />
           {t(`Version Test ถึงวันที่ ${TEST_VERSION_UNTIL}`, `Version Test ຮອດວັນທີ ${TEST_VERSION_UNTIL}`, `Version Test until ${TEST_VERSION_UNTIL}`)}
         </p>
@@ -211,9 +213,9 @@ export default async function LoginPage({
           <h2 className="text-2xl font-semibold tracking-tight text-slate-900">{t("เข้าสู่ระบบ", "ເຂົ້າສູ່ລະບົບ", "Sign in")}</h2>
           <p className="mt-1 text-sm text-slate-500">
             {t(
-              "ใช้บัญชี Google (Gmail หรืออีเมลบริษัท) กดปุ่มเดียวก็เข้าใช้งานได้",
-              "ໃຊ້ບັນຊີ Google (Gmail ຫຼື ອີເມວບໍລິສັດ) ກົດປຸ່ມດຽວກໍເຂົ້າໃຊ້ງານໄດ້",
-              "Use your Google account (Gmail or company email). One click and you're in.",
+              "ใช้บัญชี Google (Gmail หรืออีเมลบริษัท) กดปุ่มเดียวก็เข้าใช้งานได้ หรือใช้อีเมลและรหัสผ่าน",
+              "ໃຊ້ບັນຊີ Google (Gmail ຫຼື ອີເມວບໍລິສັດ) ກົດປຸ່ມດຽວກໍເຂົ້າໃຊ້ງານໄດ້ ຫຼື ໃຊ້ອີເມວ ແລະ ລະຫັດຜ່ານ",
+              "Use your Google account (Gmail or company email) and you're in with one click, or use your email and password.",
             )}
           </p>
 
@@ -259,6 +261,13 @@ export default async function LoginPage({
                 "The first time, your email is linked automatically. If you can't get in, ask the administrator to register your email first.",
               )}
             </p>
+
+            <div className="flex items-center gap-3 pt-1 text-xs text-slate-400" aria-hidden>
+              <span className="h-px flex-1 bg-slate-200" />
+              {t("หรือเข้าด้วยอีเมลและรหัสผ่าน", "ຫຼື ເຂົ້າດ້ວຍອີເມວ ແລະ ລະຫັດຜ່ານ", "Or sign in with email and password")}
+              <span className="h-px flex-1 bg-slate-200" />
+            </div>
+            <PasswordLoginForm next={safeNext(next)} />
           </div>
 
           {devUsers.length > 0 && (

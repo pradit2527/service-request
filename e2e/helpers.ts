@@ -24,7 +24,8 @@ export async function signIn(page: Page, who: Person) {
   const value = await page.locator("#userId option", { hasText: PEOPLE[who] }).first().getAttribute("value");
   expect(value, `the demo user ${who} is listed on the login page`).toBeTruthy();
   await page.selectOption("#userId", value!);
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  // The page has two "Sign in" buttons since the email and password form arrived: this is the one in the development form.
+  await page.locator("form", { has: page.locator("#userId") }).getByRole("button", { name: "Sign in", exact: true }).click();
   await page.waitForURL((url) => !url.pathname.startsWith("/login"));
 }
 

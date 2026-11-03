@@ -35,3 +35,14 @@ export function phoneField(t: Translate) {
       error: t("เบอร์โทรมีอักขระที่ไม่ถูกต้อง", "ເບີໂທມີຕົວອັກສອນທີ່ບໍ່ຖືກຕ້ອງ", "Phone number contains invalid characters"),
     });
 }
+
+/** A new password. Not trimmed: spaces are allowed, and what was typed is what is stored (after normalisation when hashing). */
+export function passwordField(t: Translate) {
+  return z
+    .string()
+    .min(8, { error: t("รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร", "ລະຫັດຜ່ານຕ້ອງມີຢ່າງໜ້ອຍ 8 ຕົວອັກສອນ", "Password must be at least 8 characters") })
+    .max(128, { error: t("รหัสผ่านยาวเกิน 128 ตัวอักษร", "ລະຫັດຜ່ານຍາວເກີນ 128 ຕົວອັກສອນ", "Password must be 128 characters or fewer") })
+    .refine((value) => value.trim() !== "", {
+      error: t("รหัสผ่านต้องไม่ใช่ช่องว่างล้วน", "ລະຫັດຜ່ານຕ້ອງບໍ່ແມ່ນຊ່ອງວ່າງລ້ວນ", "Password cannot be only spaces"),
+    });
+}

@@ -107,6 +107,16 @@ model User {
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
 
+  // Sign-in with an email and a password, next to Google. No hash means the person has no password yet.
+  passwordHash       String?   @map("password_hash")
+  // Set when an administrator gave a temporary password: the person must choose their own before anything else.
+  mustChangePassword Boolean   @default(false) @map("must_change_password")
+  // Sessions opened before this moment are no longer valid.
+  passwordChangedAt  DateTime? @map("password_changed_at")
+  // Wrong passwords in a row, and when the lock after too many of them ends.
+  failedLoginCount   Int       @default(0) @map("failed_login_count")
+  lockedUntil        DateTime? @map("locked_until")
+
   requests         ServiceRequest[] @relation("Requester")
   assignedRequests ServiceRequest[] @relation("Assignee")
   decidedRequests  ServiceRequest[] @relation("Decider")

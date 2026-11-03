@@ -12,9 +12,10 @@ import { db } from "@/lib/db";
 import type { Translate } from "@/lib/i18n";
 import { getI18n } from "@/lib/i18n-server";
 import { ROLES } from "@/lib/labels";
-import { canCreateUser, canModifyUser, type ModifyUserResult } from "@/lib/permissions";
+import { hashPassword } from "@/lib/password-hash";
+import { canCreateUser, canModifyUser, canSetPassword, type ModifyUserResult } from "@/lib/permissions";
 import { safeReturn } from "@/lib/safe-return";
-import { departmentField, emailField, nameField, phoneField } from "@/lib/user-fields";
+import { departmentField, emailField, nameField, passwordField, phoneField } from "@/lib/user-fields";
 
 function checkInputMessage(t: Translate) {
   return t("กรุณาตรวจสอบข้อมูลที่กรอกอีกครั้ง", "ກະລຸນາກວດສອບຂໍ້ມູນທີ່ກອກອີກຄັ້ງ", "Please check the information you entered");
@@ -231,4 +232,41 @@ export async function deleteUser(_prev: ActionState, formData: FormData): Promis
   revalidatePath("/admin/users");
   revalidatePath("/reports", "layout");
   redirect(returnTarget(formData));
+}
+
+/**
+ * An administrator gives someone a temporary password. That person must replace it the first time they sign in, and
+ * every session they already had ends. The password is never stored or logged as text: only its hash is kept.
+ */
+export async function setTemporaryPassword(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const { t } = await getI18n();
+  const actor = await requireSystemManager();
+  const userId = String(formData.get("userId") ?? "");
+
+  const parsed = passwordField(t).safeParse(String(formData.get("password") ?? ""));
+  if (!parsed.success) return { fieldErrors: { password: parsed.error.issues[0].message } };
+
+  const target = await db.user.findUnique({ where: { id: userId }, select: { id: true, email: true, role: true } });
+  if (!target) return { error: userNotFoundMessage(t) };
+  if (!canSetPassword(actor, target)) {
+    return {
+      error: t(
+        "ตั้งรหัสผ่านชั่วคราวได้เฉพาะผู้ดูแลระบบ และตั้งให้ตัวเองไม่ได้",
+        "ຕັ້ງລະຫັດຜ່ານຊົ່ວຄາວໄດ້ສະເພາະຜູ້ດູແລລະບົບ ແລະ ຕັ້ງໃຫ້ຕົນເອງບໍ່ໄດ້",
+        "Only an administrator can set a temporary password, and not for themselves",
+      ),
+    };
+  }
+
+  const passwordHash = await hashPassword(parsed.data);
+  await db.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id: target.id },
+      data: { passwordHash, mustChangePassword: true, passwordChangedAt: new Date(), failedLoginCount: 0, lockedUntil: null },
+    });
+    await writeAudit(tx, actor.id, { action: "PASSWORD_RESET", entity: "USER", entityId: target.id, summary: target.email });
+  });
+
+  revalidatePath(`/admin/users/${target.id}`);
+  return { ok: true };
 }
