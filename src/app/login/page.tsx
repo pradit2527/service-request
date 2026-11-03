@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Activity, FlaskConical, ShieldCheck, Server, TriangleAlert } from "lucide-react";
 import { devLogin } from "@/app/actions/auth";
+import { GlowFrame } from "@/components/glow-frame";
 import { LanguageSwitch } from "@/components/language-switch";
 import { Logo } from "@/components/logo";
 import { PasswordLoginForm } from "@/components/password-login-form";
@@ -197,14 +198,12 @@ export default async function LoginPage({
         <div className="absolute top-4 right-4">
           <LanguageSwitch variant="light" />
         </div>
-        {/* Above the form, in the normal flow. On a wide screen that is also tall enough (58rem, room for the whole form) it
-            floats in the space above the form instead: a sixth of the way down the panel, but never lower than about
-            half a form-height (25.5rem) above the centre. */}
-        <p className="mb-6 inline-flex items-center gap-2.5 rounded-full bg-amber-50 px-5 py-2 text-center text-base font-medium text-amber-800 ring-1 ring-amber-200 ring-inset lg:[@media(min-height:58rem)]:absolute lg:[@media(min-height:58rem)]:top-[clamp(4rem,16%,calc(50%_-_25.5rem))] lg:[@media(min-height:58rem)]:left-1/2 lg:[@media(min-height:58rem)]:mb-0 lg:[@media(min-height:58rem)]:w-max lg:[@media(min-height:58rem)]:-translate-x-1/2">
-          <FlaskConical className="h-5 w-5 shrink-0" aria-hidden />
-          {t(`Version Test ถึงวันที่ ${TEST_VERSION_UNTIL}`, `Version Test ຮອດວັນທີ ${TEST_VERSION_UNTIL}`, `Version Test until ${TEST_VERSION_UNTIL}`)}
-        </p>
-        <div className="w-full max-w-sm">
+        <GlowFrame className="w-full max-w-md">
+          <p className="mx-auto mb-6 flex w-fit max-w-full items-center gap-2.5 rounded-full bg-amber-50 px-5 py-2 text-center text-base font-medium text-amber-800 ring-1 ring-amber-200 ring-inset">
+            <FlaskConical className="h-5 w-5 shrink-0" aria-hidden />
+            {t(`Version Test ถึงวันที่ ${TEST_VERSION_UNTIL}`, `Version Test ຮອດວັນທີ ${TEST_VERSION_UNTIL}`, `Version Test until ${TEST_VERSION_UNTIL}`)}
+          </p>
+
           <div className="mb-8 flex items-center gap-4 lg:hidden">
             <Logo size="sm" />
             <p className="text-lg leading-tight font-semibold tracking-tight">{APP_NAME}</p>
@@ -292,7 +291,7 @@ export default async function LoginPage({
               </div>
             </form>
           )}
-        </div>
+        </GlowFrame>
       </section>
     </main>
   );

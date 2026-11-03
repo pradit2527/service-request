@@ -81,6 +81,39 @@
   }
 }
 
+/* The same running light for the card on the sign-in page (glow-frame.tsx): indigo to violet with a sky-blue head, so it
+   shows on a white card. The square is at least 90rem wide, so its corners stay outside even a tall card. */
+@keyframes card-runner-spin {
+  from {
+    rotate: 0deg;
+  }
+  to {
+    rotate: 360deg;
+  }
+}
+
+@utility card-runner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: max(220%, 90rem);
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  background-image: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    transparent 200deg,
+    rgb(99 102 241 / 0.2) 235deg,
+    #6366f1 290deg,
+    #8b5cf6 322deg,
+    #38bdf8 345deg,
+    transparent 360deg
+  );
+  @media (prefers-reduced-motion: no-preference) {
+    animation: card-runner-spin 5s linear infinite;
+  }
+}
+
 @layer base {
   html {
     -webkit-tap-highlight-color: transparent;
