@@ -7,7 +7,7 @@ export const PEOPLE = {
   it: "ສົມສີ ທີມ IT",
   manager: "Decha Ning",
   // A manager in the e2e database only (see e2e/prepare-database.ts); no seeded request names them as approver.
-  otherManager: "Chanon Leng",
+  otherManager: "E2E Second Manager",
   employee: "ວິພາ ພັດທະນາ",
 } as const;
 export type Person = keyof typeof PEOPLE;

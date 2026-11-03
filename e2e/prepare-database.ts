@@ -29,13 +29,14 @@ async function main() {
   run("npx", ["prisma", "db", "seed"], env);
 
   // The demo data has a single approving manager, so every seeded request names the same person. The e2e database
-  // gets a second one (the seed's other manager, kept as an employee there) so a test can check that a manager's
-  // report stops at their own approvals.
-  const seeded = new PrismaClient({ datasourceUrl: url });
+  // gets a second one so a test can check that a manager's report stops at their own approvals.
+  const extra = new PrismaClient({ datasourceUrl: url });
   try {
-    await seeded.user.update({ where: { email: "mgr2@example.test" }, data: { role: "MANAGER" } });
+    await extra.user.create({
+      data: { email: "e2e.manager2@example.test", name: "E2E Second Manager", role: "MANAGER", department: "Testing", phone: "081-000-0099" },
+    });
   } finally {
-    await seeded.$disconnect();
+    await extra.$disconnect();
   }
 }
 

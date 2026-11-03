@@ -28,9 +28,6 @@ const USERS: UserSeed[] = [
   { key: "it1", email: "it1@example.test", name: "ສົມສີ ທີມ IT", role: "IT_STAFF", department: "IT", phone: "081-000-0002" },
   { key: "it2", email: "it2@example.test", name: "ທະນາ ທີມ IT", role: "IT_STAFF", department: "IT", phone: "081-000-0003" },
   { key: "mgr1", email: "mgr1@example.test", name: "Decha Ning", role: "MANAGER", department: "CTO", phone: "081-000-0021" },
-  // Not an approver for now (an employee), so only Decha Ning is offered as the approving manager.
-  // Set the role back to MANAGER here, or on the Users page, to put him on the approver list again.
-  { key: "mgr2", email: "mgr2@example.test", name: "Chanon Leng", role: "EMPLOYEE", department: "ผอ. BD", phone: "081-000-0022" },
   { key: "emp1", email: "emp1@example.test", name: "ວິພາ ພັດທະນາ", role: "EMPLOYEE", department: "Software Development", phone: "081-000-0011" },
   { key: "emp2", email: "emp2@example.test", name: "ພາຄິນ ເຄືອຂ່າຍ", role: "EMPLOYEE", department: "Data & AI", phone: "081-000-0012" },
   { key: "emp3", email: "emp3@example.test", name: "ນະພາ ການຕະຫຼາດ", role: "EMPLOYEE", department: "Marketing", phone: "081-000-0013" },

@@ -83,7 +83,7 @@ test.describe("reports", () => {
     const editIds = (page: Page) =>
       page.locator("tbody a[href*=\"edit=\"]").evaluateAll((links) => links.map((link) => new URL((link as HTMLAnchorElement).href).searchParams.get("edit") ?? ""));
 
-    // Every demo request names Decha Ning, so another manager's request is filed here: this one names Chanon Leng.
+    // Every demo request names Decha Ning, so another manager's request is filed here: this one names the second manager.
     const employee = await openAs(browser, "employee");
     const otherPath = await fileConsultation(employee, `E2E scope check ${Date.now()}`, PEOPLE.otherManager);
     const otherId = otherPath.split("/").pop()!;
