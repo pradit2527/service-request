@@ -196,9 +196,10 @@ export default async function LoginPage({
         <div className="absolute top-4 right-4">
           <LanguageSwitch variant="light" />
         </div>
-        {/* Above the form on a phone; at the top of the panel, under the language switch, on a wide screen. */}
-        <p className="mb-6 inline-flex items-center gap-2 rounded-full bg-amber-50 px-4 py-1.5 text-center text-sm font-medium text-amber-800 ring-1 ring-amber-200 ring-inset lg:absolute lg:top-16 lg:left-1/2 lg:mb-0 lg:-translate-x-1/2">
-          <FlaskConical className="h-4 w-4 shrink-0" aria-hidden />
+        {/* Above the form, in the normal flow. On a wide screen that is also tall enough (44rem) it floats in the space above
+            the form instead: a sixth of the way down the panel, but never lower than a form-height above the centre. */}
+        <p className="mb-6 inline-flex items-center gap-2.5 rounded-full bg-amber-50 px-5 py-2 text-center text-base font-medium text-amber-800 ring-1 ring-amber-200 ring-inset lg:[@media(min-height:44rem)]:absolute lg:[@media(min-height:44rem)]:top-[clamp(4rem,16%,calc(50%_-_17.5rem))] lg:[@media(min-height:44rem)]:left-1/2 lg:[@media(min-height:44rem)]:mb-0 lg:[@media(min-height:44rem)]:w-max lg:[@media(min-height:44rem)]:-translate-x-1/2">
+          <FlaskConical className="h-5 w-5 shrink-0" aria-hidden />
           {t(`Version Test ถึงวันที่ ${TEST_VERSION_UNTIL}`, `Version Test ຮອດວັນທີ ${TEST_VERSION_UNTIL}`, `Version Test until ${TEST_VERSION_UNTIL}`)}
         </p>
         <div className="w-full max-w-sm">
