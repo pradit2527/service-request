@@ -1,11 +1,12 @@
 import "server-only";
 import { cookies } from "next/headers";
+import { cookieSecure } from "./env";
 import { SESSION_COOKIE, SESSION_MAX_AGE_SECONDS, signSession } from "./jwt";
 
 export function sessionCookieOptions() {
   return {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: cookieSecure(),
     sameSite: "lax" as const,
     path: "/",
     maxAge: SESSION_MAX_AGE_SECONDS,

@@ -58,3 +58,15 @@ export function isAllowedAccount(email: string, hostedDomain: string | null): bo
   if (!isAllowedEmail(lower)) return false;
   return !hostedDomain || allowedEmailDomains().includes(hostedDomain.toLowerCase());
 }
+
+/**
+ * Whether cookies are marked Secure, which makes a browser send them over https only. On by default in production.
+ * COOKIE_SECURE="false" turns it off for a site served over plain http inside a private network (the browser would
+ * otherwise drop the cookie and nobody could sign in); COOKIE_SECURE="true" forces it on while developing.
+ */
+export function cookieSecure(): boolean {
+  const setting = process.env.COOKIE_SECURE?.trim().toLowerCase();
+  if (setting === "false") return false;
+  if (setting === "true") return true;
+  return process.env.NODE_ENV === "production";
+}

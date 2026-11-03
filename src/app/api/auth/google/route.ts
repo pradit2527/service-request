@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { appUrl } from "@/lib/env";
+import { appUrl, cookieSecure } from "@/lib/env";
 import { buildAuthorizationUrl, randomToken } from "@/lib/google";
 import { OAUTH_COOKIE, OAUTH_MAX_AGE_SECONDS, signOAuthState } from "@/lib/jwt";
 import { safeNext } from "@/lib/safe-next";
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     const response = NextResponse.redirect(authorizationUrl);
     response.cookies.set(OAUTH_COOKIE, await signOAuthState({ state, verifier, nonce, next }), {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: cookieSecure(),
       sameSite: "lax",
       path: "/api/auth",
       maxAge: OAUTH_MAX_AGE_SECONDS,
